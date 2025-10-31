@@ -1,22 +1,33 @@
 import { prisma } from "../prisma/client";
 import { Request, Response } from "express";
 
-
 export async function listarUsuarios(req: Request, res: Response) {
   try {
-    const usuarios = await prisma.usuario.findMany();
+    const usuarios = await prisma.usuario.findMany({
+      orderBy: { id_usuario: "asc" }, // ordena para consistência
+      select: {
+        id_usuario: true,
+        nome: true,
+        email: true,
+      },
+    });
     res.json(usuarios);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao listar usuários." });
   }
 }
 
-
 export async function buscarUsuario(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: Number(id) },
+      where: { id_usuario: id },
+      select: {
+        id_usuario: true,
+        nome: true,
+        email: true,
+      },
     });
 
     if (!usuario) {
@@ -25,6 +36,7 @@ export async function buscarUsuario(req: Request, res: Response) {
 
     res.json(usuario);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao buscar usuário." });
   }
 }
@@ -32,6 +44,10 @@ export async function buscarUsuario(req: Request, res: Response) {
 export async function criarUsuario(req: Request, res: Response) {
   try {
     const { nome, email, senha } = req.body;
+
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ error: "Campos obrigatórios faltando." });
+    }
 
     const usuarioExistente = await prisma.usuario.findUnique({
       where: { email },
@@ -47,18 +63,18 @@ export async function criarUsuario(req: Request, res: Response) {
 
     res.status(201).json(novoUsuario);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao criar usuário." });
   }
 }
 
-
 export async function atualizarUsuario(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
     const { nome, email, senha } = req.body;
 
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: Number(id) },
+      where: { id_usuario: id },
     });
 
     if (!usuario) {
@@ -66,22 +82,23 @@ export async function atualizarUsuario(req: Request, res: Response) {
     }
 
     const usuarioAtualizado = await prisma.usuario.update({
-      where: { id_usuario: Number(id) },
+      where: { id_usuario: id },
       data: { nome, email, senha },
     });
 
     res.json(usuarioAtualizado);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao atualizar usuário." });
   }
 }
 
 export async function deletarUsuario(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
 
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: Number(id) },
+      where: { id_usuario: id },
     });
 
     if (!usuario) {
@@ -89,11 +106,12 @@ export async function deletarUsuario(req: Request, res: Response) {
     }
 
     await prisma.usuario.delete({
-      where: { id_usuario: Number(id) },
+      where: { id_usuario: id },
     });
 
-    res.status(204).send(); // Sem corpo, sucesso
+    res.status(204).send();
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao deletar usuário." });
   }
 }
