@@ -1,0 +1,143 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================
+// MODELOS DO REC'MAP
+// ==========================
+
+model Usuario {
+  id_usuario       Int                  @id @default(autoincrement())
+  nome             String
+  email            String               @unique
+  senha            String
+  tipo_usuario     UsuarioTipo          @default(CIDADAO)
+  latitude         Float?
+  longitude        Float?
+  data_cadastro    DateTime             @default(now())
+
+  // relações
+  pontosColeta     PontoColeta[]
+  denuncias        Denuncia[]
+  validacoes       ValidacaoDenuncia[]
+  usuarioConteudos UsuarioConteudo[]
+  relatorios       Relatorio[]
+}
+
+enum UsuarioTipo {
+  CIDADAO
+  GOVERNAMENTAL
+}
+
+model PontoColeta {
+  id_ponto     Int          @id @default(autoincrement())
+  titulo       String
+  descricao    String?
+  tipo_residuo ResiduoTipo
+  latitude     Float
+  longitude    Float
+  criado_por   Int
+  data_criacao DateTime     @default(now())
+
+  usuario      Usuario      @relation(fields: [criado_por], references: [id_usuario])
+}
+
+enum ResiduoTipo {
+  RECICLAVEL
+  ORGANICO
+  PERIGOSO
+}
+
+model Denuncia {
+  id_denuncia  Int             @id @default(autoincrement())
+  id_usuario   Int
+  titulo       String
+  descricao    String
+  localizacao  String?
+  latitude     Float?
+  longitude    Float?
+  foto         String?
+  status       DenunciaStatus  @default(PENDENTE)
+  data_criacao DateTime        @default(now())
+
+  usuario      Usuario         @relation(fields: [id_usuario], references: [id_usuario])
+  validacoes   ValidacaoDenuncia[]
+}
+
+enum DenunciaStatus {
+  PENDENTE
+  VALIDADA
+  ENCAMINHADA
+  RESOLVIDA
+}
+
+model ValidacaoDenuncia {
+  id_validacao   Int               @id @default(autoincrement())
+  id_usuario     Int
+  id_denuncia    Int
+  tipo_validacao ValidacaoTipo
+  data_validacao DateTime          @default(now())
+
+  usuario        Usuario           @relation(fields: [id_usuario], references: [id_usuario])
+  denuncia       Denuncia          @relation(fields: [id_denuncia], references: [id_denuncia])
+}
+
+enum ValidacaoTipo {
+  CONFIRMAR
+  CONTESTAR
+}
+
+model ConteudoEducativo {
+  id_conteudo      Int              @id @default(autoincrement())
+  titulo           String
+  tipo             ConteudoTipo
+  descricao        String?
+  url              String?
+  data_publicacao  DateTime         @default(now())
+
+  usuarios         UsuarioConteudo[]
+}
+
+enum ConteudoTipo {
+  VIDEO
+  TEXTO
+  QUIZ
+  OUTRO
+}
+
+model Relatorio {
+  id_relatorio  Int        @id @default(autoincrement())
+  titulo        String
+  tipo          RelatorioTipo
+  descricao     String?
+  data_geracao  DateTime   @default(now())
+  gerado_por    Int
+
+  usuario       Usuario    @relation(fields: [gerado_por], references: [id_usuario])
+}
+
+enum RelatorioTipo {
+  DENUNCIAS
+  PONTOS_COLETA
+  VALIDACOES
+  ENGAJAMENTO
+}
+
+model UsuarioConteudo {
+  id_usuario     Int
+  id_conteudo    Int
+  concluido      Boolean   @default(false)
+  data_conclusao DateTime?
+
+  usuario        Usuario           @relation(fields: [id_usuario], references: [id_usuario])
+  conteudo       ConteudoEducativo @relation(fields: [id_conteudo], references: [id_conteudo])
+
+  @@id([id_usuario, id_conteudo])
+}
