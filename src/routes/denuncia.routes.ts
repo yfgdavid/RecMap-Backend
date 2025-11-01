@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import {
   listarDenuncias,
   buscarDenuncia,
@@ -8,12 +9,16 @@ import {
 } from "../controllers/denunciaController";
 
 const router = Router();
+const upload = multer({ dest: "uploads/" }); 
 
 // Rotas CRUD de Denúncias
-router.get("/", listarDenuncias);        // GET /denuncias
-router.get("/:id", buscarDenuncia);      // GET /denuncias/:id
-router.post("/", criarDenuncia);         // POST /denuncias
-router.put("/:id", atualizarDenuncia);   // PUT /denuncias/:id
-router.delete("/:id", deletarDenuncia);  // DELETE /denuncias/:id
+router.get("/", listarDenuncias);
+router.get("/:id", buscarDenuncia);
+
+// POST com foto e geocodificação
+router.post("/", upload.single("foto"), criarDenuncia);
+
+router.put("/:id", atualizarDenuncia);
+router.delete("/:id", deletarDenuncia);
 
 export default router;
