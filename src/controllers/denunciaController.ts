@@ -2,6 +2,41 @@ import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 import { upload, geocode } from "../services/uploadService";
 
+export async function listarDenunciasPendentes(req: Request, res: Response) {
+  try {
+    const id_usuario = Number(req.params.id_usuario);
+
+    // Busca denúncias pendentes que não foram criadas pelo usuário logado
+    const denuncias = await prisma.denuncia.findMany({
+      where: {
+        status: "PENDENTE",
+        id_usuario: { not: id_usuario },
+      },
+      include: {
+        validacoes: true, // inclui validações existentes
+      },
+      orderBy: { data_criacao: "desc" },
+    });
+
+    // Formata para frontend
+    const formatadas = denuncias.map((d) => ({
+      id_denuncia: d.id_denuncia,
+      titulo: d.titulo,
+      descricao: d.descricao,
+      status: d.status,
+      data_criacao: d.data_criacao.toISOString().split("T")[0],
+      localizacao: d.localizacao,
+      confirma: d.validacoes.filter((v) => v.tipo_validacao === "CONFIRMAR").length,
+      contesta: d.validacoes.filter((v) => v.tipo_validacao === "CONTESTAR").length,
+    }));
+
+    res.json(formatadas);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao listar denúncias pendentes." });
+  }
+}
+
 // Criação de denúncia
 export const criarDenuncia = async (req: Request, res: Response) => {
   try {

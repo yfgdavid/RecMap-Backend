@@ -1,6 +1,9 @@
 import { prisma } from "../prisma/client";
 import { Request, Response } from "express";
 
+/**
+ * Listar todas as validações
+ */
 export async function listarValidacoes(req: Request, res: Response) {
   try {
     const validacoes = await prisma.validacaoDenuncia.findMany({
@@ -15,7 +18,6 @@ export async function listarValidacoes(req: Request, res: Response) {
       tipo_validacao: v.tipo_validacao,
       usuario: { id: v.usuario.id_usuario, nome: v.usuario.nome },
       denuncia: { id: v.denuncia.id_denuncia, titulo: v.denuncia.titulo, status: v.denuncia.status },
-    
     }));
 
     res.json(formatadas);
@@ -25,6 +27,9 @@ export async function listarValidacoes(req: Request, res: Response) {
   }
 }
 
+/**
+ * Buscar uma validação pelo ID
+ */
 export async function buscarValidacao(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
@@ -43,7 +48,6 @@ export async function buscarValidacao(req: Request, res: Response) {
       tipo_validacao: validacao.tipo_validacao,
       usuario: { id: validacao.usuario.id_usuario, nome: validacao.usuario.nome },
       denuncia: { id: validacao.denuncia.id_denuncia, titulo: validacao.denuncia.titulo, status: validacao.denuncia.status },
-      
     });
   } catch (error) {
     console.error(error);
@@ -51,43 +55,63 @@ export async function buscarValidacao(req: Request, res: Response) {
   }
 }
 
+/**
+ * Criar validação (CONFIRMAR | CONTESTAR) de denúncia
+ */
 export async function criarValidacao(req: Request, res: Response) {
   try {
     const { id_usuario, id_denuncia, tipo_validacao } = req.body;
-    if (!id_usuario || !id_denuncia || !tipo_validacao) {
+
+    if (!id_usuario || !id_denuncia || !tipo_validacao)
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
+
+    const denuncia = await prisma.denuncia.findUnique({ where: { id_denuncia: Number(id_denuncia) } });
+    if (!denuncia) return res.status(404).json({ error: "Denúncia não encontrada." });
+
+    if (denuncia.id_usuario === Number(id_usuario)) {
+      return res.status(403).json({ error: "Você não pode validar sua própria denúncia." });
     }
 
-    const [usuarioExiste, denunciaExiste] = await Promise.all([
-      prisma.usuario.findUnique({ where: { id_usuario } }),
-      prisma.denuncia.findUnique({ where: { id_denuncia } }),
-    ]);
+    try {
+      const novaValidacao = await prisma.validacaoDenuncia.create({
+        data: { id_usuario: Number(id_usuario), id_denuncia: Number(id_denuncia), tipo_validacao },
+        include: {
+          usuario: { select: { id_usuario: true, nome: true } },
+          denuncia: { select: { id_denuncia: true, titulo: true, status: true } },
+        },
+      });
 
-    if (!usuarioExiste || !denunciaExiste) {
-      return res.status(404).json({ error: "Usuário ou denúncia não encontrado." });
+      // Contagem de confirmações e contestações
+      const confirma = await prisma.validacaoDenuncia.count({
+        where: { id_denuncia: Number(id_denuncia), tipo_validacao: "CONFIRMAR" },
+      });
+
+      const contesta = await prisma.validacaoDenuncia.count({
+        where: { id_denuncia: Number(id_denuncia), tipo_validacao: "CONTESTAR" },
+      });
+
+      res.status(201).json({ 
+        id: novaValidacao.id_validacao,
+        tipo_validacao: novaValidacao.tipo_validacao,
+        usuario: novaValidacao.usuario,
+        denuncia: novaValidacao.denuncia,
+        confirma,
+        contesta,
+      });
+
+    } catch (err: any) {
+      if (err.code === "P2002") return res.status(409).json({ error: "Você já validou essa denúncia." });
+      throw err;
     }
-
-    const novaValidacao = await prisma.validacaoDenuncia.create({
-      data: { id_usuario, id_denuncia, tipo_validacao },
-      include: {
-        usuario: { select: { id_usuario: true, nome: true } },
-        denuncia: { select: { id_denuncia: true, titulo: true, status: true } },
-      },
-    });
-
-    res.status(201).json({
-      id: novaValidacao.id_validacao,
-      tipo_validacao: novaValidacao.tipo_validacao,
-      usuario: { id: novaValidacao.usuario.id_usuario, nome: novaValidacao.usuario.nome },
-      denuncia: { id: novaValidacao.denuncia.id_denuncia, titulo: novaValidacao.denuncia.titulo, status: novaValidacao.denuncia.status },
-     
-    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao criar validação." });
   }
 }
 
+/**
+ * Atualizar validação
+ */
 export async function atualizarValidacao(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
@@ -108,9 +132,8 @@ export async function atualizarValidacao(req: Request, res: Response) {
     res.json({
       id: atualizada.id_validacao,
       tipo_validacao: atualizada.tipo_validacao,
-      usuario: { id: atualizada.usuario.id_usuario, nome: atualizada.usuario.nome },
-      denuncia: { id: atualizada.denuncia.id_denuncia, titulo: atualizada.denuncia.titulo, status: atualizada.denuncia.status },
-      
+      usuario: atualizada.usuario,
+      denuncia: atualizada.denuncia,
     });
   } catch (error) {
     console.error(error);
@@ -118,6 +141,9 @@ export async function atualizarValidacao(req: Request, res: Response) {
   }
 }
 
+/**
+ * Deletar validação
+ */
 export async function deletarValidacao(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
