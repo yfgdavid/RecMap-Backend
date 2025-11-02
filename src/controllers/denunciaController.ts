@@ -195,6 +195,23 @@ export async function buscarDenuncia(req: Request, res: Response) {
 }
 
 
+export const getDenunciasPorUsuario = async (req: Request, res: Response) => {
+  try {
+    const { id_usuario } = req.params;
+
+    const denuncias = await prisma.denuncia.findMany({
+      where: { id_usuario: Number(id_usuario) },
+      include: { validacoes: true },
+      orderBy: { data_criacao: "desc" },
+    });
+
+    res.json(denuncias);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar denúncias do usuário." });
+  }
+};
+
 // Deleta uma denúncia
 export async function deletarDenuncia(req: Request, res: Response) {
   const id = Number(req.params.id);

@@ -6,6 +6,7 @@ import {
   criarDenuncia,
   atualizarDenuncia,
   deletarDenuncia,
+  getDenunciasPorUsuario,
 } from "../controllers/denunciaController";
 
 const router = Router();
@@ -14,6 +15,7 @@ const upload = multer({ dest: "uploads/" });
 // Rotas CRUD de Denúncias
 router.get("/", listarDenuncias);
 router.get("/:id", buscarDenuncia);
+router.get("/usuario/:id_usuario", getDenunciasPorUsuario);
 
 // POST com foto e geocodificação
 router.post("/", upload.single("foto"), criarDenuncia);
