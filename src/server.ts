@@ -8,7 +8,6 @@ import denunciaRoutes from "./routes/denuncia.routes";
 import pontoColetaRoutes from "./routes/pontoColeta.routes";
 import relatorioRoutes from "./routes/relatorio.routes";
 import validacaoRoutes from "./routes/validacao.routes";
-import conteudoRoutes from "./routes/conteudo.routes";
 import mapaRoutes from "./routes/mapa.routes";
 import authRoutes from "./routes/auth.routes";
 
@@ -37,7 +36,6 @@ app.use("/usuarios", usuarioRoutes);
 app.use("/pontos", pontoColetaRoutes);
 app.use("/relatorios", relatorioRoutes);
 app.use("/validacoes", validacaoRoutes);
-app.use("/conteudos", conteudoRoutes);
 app.use("/mapa", mapaRoutes);
 app.use("/auth", authRoutes);
 

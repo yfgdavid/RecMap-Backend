@@ -1,5 +1,7 @@
+import { isDataView } from "util/types";
 import { prisma } from "../prisma/client";
 import { Request, Response } from "express";
+import { geocode } from "../services/uploadService"; // <-- usa a sua funçã
 
 export async function listarPontos(req: Request, res: Response) {
   try {
@@ -9,10 +11,9 @@ export async function listarPontos(req: Request, res: Response) {
       id: p.id_ponto,
       titulo: p.titulo,
       descricao: p.descricao,
-      tipo_residuo: p.tipo_residuo,
       latitude: p.latitude,
       longitude: p.longitude,
-      criado_por: p.usuario.nome,
+      id_usuario: p.usuario.nome,
     }));
 
     res.json(formatados);
@@ -33,10 +34,9 @@ export async function buscarPonto(req: Request, res: Response) {
       id: ponto.id_ponto,
       titulo: ponto.titulo,
       descricao: ponto.descricao,
-      tipo_residuo: ponto.tipo_residuo,
       latitude: ponto.latitude,
       longitude: ponto.longitude,
-      criado_por: ponto.usuario.nome,
+      id_usuario: ponto.usuario.nome,
     });
   } catch (error) {
     console.error(error);
@@ -44,38 +44,61 @@ export async function buscarPonto(req: Request, res: Response) {
   }
 }
 
-export async function criarPonto(req: Request, res: Response) {
+export const criarPonto = async (req: Request, res: Response) => {
   try {
-    const { titulo, descricao, tipo_residuo, latitude, longitude, criado_por } = req.body;
+    const { id_usuario, titulo, descricao, localizacao } = req.body;
 
-    if (!titulo || !tipo_residuo || !latitude || !longitude || !criado_por)
+    if (!id_usuario || !titulo || !localizacao) {
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
+    }
 
-    const usuario = await prisma.usuario.findUnique({ where: { id_usuario: criado_por } });
-    if (!usuario) return res.status(404).json({ error: "Usuário criador não encontrado." });
+    // Converte endereço → lat/lon
+    const coords = await geocode(localizacao);
+    const latitude = coords?.latitude ?? null;
+    const longitude = coords?.longitude ?? null;
 
     const novoPonto = await prisma.pontoColeta.create({
-      data: { titulo, descricao, tipo_residuo, latitude: Number(latitude), longitude: Number(longitude), criado_por },
+      data: {
+        id_usuario: Number(id_usuario),
+        titulo,
+        descricao,
+        localizacao,
+        latitude,
+        longitude,
+        foto: req.file ? req.file.filename : null,
+      },
+      include: { usuario: true },
     });
 
-    res.status(201).json(novoPonto);
+    res.status(201).json({
+      id: novoPonto.id_ponto,
+      titulo: novoPonto.titulo,
+      descricao: novoPonto.descricao,
+      localizacao: novoPonto.localizacao,
+      latitude: novoPonto.latitude,
+      longitude: novoPonto.longitude,
+      foto: novoPonto.foto,
+      usuario: novoPonto.usuario.nome,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao criar ponto de coleta." });
   }
-}
+};
+
+
 
 export async function atualizarPonto(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
-    const { titulo, descricao, tipo_residuo, latitude, longitude } = req.body;
+    const { titulo, descricao, latitude, longitude } = req.body;
 
     const ponto = await prisma.pontoColeta.findUnique({ where: { id_ponto: id } });
     if (!ponto) return res.status(404).json({ error: "Ponto de coleta não encontrado." });
 
     const atualizado = await prisma.pontoColeta.update({
       where: { id_ponto: id },
-      data: { titulo, descricao, tipo_residuo, latitude: Number(latitude), longitude: Number(longitude) },
+      data: { titulo, descricao, latitude: Number(latitude), longitude: Number(longitude) },
     });
 
     res.json(atualizado);

@@ -27,7 +27,6 @@ model Usuario {
   pontosColeta     PontoColeta[]
   denuncias        Denuncia[]
   validacoes       ValidacaoDenuncia[]
-  usuarioConteudos UsuarioConteudo[]
   relatorios       Relatorio[]
 }
 
@@ -40,13 +39,15 @@ model PontoColeta {
   id_ponto     Int          @id @default(autoincrement())
   titulo       String
   descricao    String?
-  tipo_residuo ResiduoTipo
-  latitude     Float
-  longitude    Float
-  criado_por   Int
+  latitude     Float?
+  longitude    Float?
+  localizacao String? @db.Text
+  id_usuario   Int
   data_criacao DateTime     @default(now())
+  foto         String?
 
-  usuario      Usuario      @relation(fields: [criado_por], references: [id_usuario])
+
+  usuario      Usuario      @relation(fields: [id_usuario], references: [id_usuario])
 }
 
 enum ResiduoTipo {
@@ -60,7 +61,7 @@ model Denuncia {
   id_usuario   Int
   titulo       String
   descricao    String
-  localizacao  String?
+  localizacao String? @db.Text
   latitude     Float?
   longitude    Float?
   foto         String?
@@ -94,23 +95,6 @@ enum ValidacaoTipo {
   CONTESTAR
 }
 
-model ConteudoEducativo {
-  id_conteudo      Int              @id @default(autoincrement())
-  titulo           String
-  tipo             ConteudoTipo
-  descricao        String?
-  url              String?
-  data_publicacao  DateTime         @default(now())
-
-  usuarios         UsuarioConteudo[]
-}
-
-enum ConteudoTipo {
-  VIDEO
-  TEXTO
-  QUIZ
-  OUTRO
-}
 
 model Relatorio {
   id_relatorio  Int        @id @default(autoincrement())
@@ -130,14 +114,3 @@ enum RelatorioTipo {
   ENGAJAMENTO
 }
 
-model UsuarioConteudo {
-  id_usuario     Int
-  id_conteudo    Int
-  concluido      Boolean   @default(false)
-  data_conclusao DateTime?
-
-  usuario        Usuario           @relation(fields: [id_usuario], references: [id_usuario])
-  conteudo       ConteudoEducativo @relation(fields: [id_conteudo], references: [id_conteudo])
-
-  @@id([id_usuario, id_conteudo])
-}
