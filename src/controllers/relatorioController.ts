@@ -1,5 +1,29 @@
 import { prisma } from "../prisma/client";
 import { Request, Response } from "express";
+import { getInfograficoData, generateInfograficoPDF } from
+"../services/pdfService"; // <-- LINHA ADICIONADA
+
+// CÓDIGO DE DIAGNÓSTICO PARA SUBSTITUIR A FUNÇÃO EXISTENTE
+
+export async function gerarInfograficoPDF(req: Request, res: Response) {
+  try {
+    const data = await getInfograficoData();
+    const pdfBuffer = await generateInfograficoPDF(data);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=relatorio_recmap.pdf");
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("ERRO DETALHADO NA GERAÇÃO DE PDF:", error); // Imprime no console
+    // Envia o erro detalhado na resposta HTTP para diagnóstico
+    res.status(500).json({ 
+      error: "Erro ao gerar infográfico PDF.", 
+      details: error instanceof Error ? error.message : "Erro desconhecido. Verifique o console do servidor."
+    });
+  }
+}
+
+
 
 export async function listarRelatorios(req: Request, res: Response) {
   try {
@@ -7,7 +31,7 @@ export async function listarRelatorios(req: Request, res: Response) {
       include: { usuario: true },
     });
 
-    const formatados = relatorios.map(r => ({
+    const formatados = relatorios.map((r:any) => ({
       id: r.id_relatorio,
       titulo: r.titulo,
       tipo: r.tipo,
