@@ -1,7 +1,7 @@
 // prisma/schema.prisma
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -41,11 +41,10 @@ model PontoColeta {
   descricao    String?
   latitude     Float?
   longitude    Float?
-  localizacao String? @db.Text
+  localizacao  String
   id_usuario   Int
   data_criacao DateTime     @default(now())
   foto         String?
-
 
   usuario      Usuario      @relation(fields: [id_usuario], references: [id_usuario])
 }
@@ -61,7 +60,7 @@ model Denuncia {
   id_usuario   Int
   titulo       String
   descricao    String
-  localizacao String? @db.Text
+  localizacao  String
   latitude     Float?
   longitude    Float?
   foto         String?
@@ -95,7 +94,6 @@ enum ValidacaoTipo {
   CONTESTAR
 }
 
-
 model Relatorio {
   id_relatorio  Int        @id @default(autoincrement())
   titulo        String
@@ -113,4 +111,3 @@ enum RelatorioTipo {
   VALIDACOES
   ENGAJAMENTO
 }
-

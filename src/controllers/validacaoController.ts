@@ -13,11 +13,12 @@ export async function listarValidacoes(req: Request, res: Response) {
       },
     });
 
-    const formatadas = validacoes.map(v => ({
+    const formatadas = validacoes.map((v: typeof validacoes[number]) => ({
       id: v.id_validacao,
       tipo_validacao: v.tipo_validacao,
-      usuario: { id: v.usuario.id_usuario, nome: v.usuario.nome },
-      denuncia: { id: v.denuncia.id_denuncia, titulo: v.denuncia.titulo, status: v.denuncia.status },
+      // Acesso seguro para evitar erros com 'noUncheckedIndexedAccess'
+      usuario: { id: v.usuario?.id_usuario, nome: v.usuario?.nome ?? "Usuário desconhecido" },
+      denuncia: { id: v.denuncia?.id_denuncia, titulo: v.denuncia?.titulo, status: v.denuncia?.status },
     }));
 
     res.json(formatadas);
@@ -46,8 +47,9 @@ export async function buscarValidacao(req: Request, res: Response) {
     res.json({
       id: validacao.id_validacao,
       tipo_validacao: validacao.tipo_validacao,
-      usuario: { id: validacao.usuario.id_usuario, nome: validacao.usuario.nome },
-      denuncia: { id: validacao.denuncia.id_denuncia, titulo: validacao.denuncia.titulo, status: validacao.denuncia.status },
+      // Acesso seguro para evitar erros com 'noUncheckedIndexedAccess'
+      usuario: { id: validacao.usuario?.id_usuario, nome: validacao.usuario?.nome ?? "Usuário desconhecido" },
+      denuncia: { id: validacao.denuncia?.id_denuncia, titulo: validacao.denuncia?.titulo, status: validacao.denuncia?.status },
     });
   } catch (error) {
     console.error(error);
@@ -90,13 +92,18 @@ export async function criarValidacao(req: Request, res: Response) {
         where: { id_denuncia: Number(id_denuncia), tipo_validacao: "CONTESTAR" },
       });
 
+      // Lógica para a mensagem no plural
+      const totalValidacoes = confirma + contesta;
+      const mensagemTotal = `${totalValidacoes} ${totalValidacoes === 1 ? "avaliação" : "avaliações"}`;
+
       res.status(201).json({ 
         id: novaValidacao.id_validacao,
         tipo_validacao: novaValidacao.tipo_validacao,
-        usuario: novaValidacao.usuario,
-        denuncia: novaValidacao.denuncia,
+        usuario: novaValidacao.usuario ?? null,
+        denuncia: novaValidacao.denuncia ?? null,
         confirma,
         contesta,
+        mensagemTotal, // <-- Adicionamos a mensagem formatada
       });
 
     } catch (err: any) {
@@ -132,8 +139,8 @@ export async function atualizarValidacao(req: Request, res: Response) {
     res.json({
       id: atualizada.id_validacao,
       tipo_validacao: atualizada.tipo_validacao,
-      usuario: atualizada.usuario,
-      denuncia: atualizada.denuncia,
+      usuario: atualizada.usuario ?? null,
+      denuncia: atualizada.denuncia ?? null,
     });
   } catch (error) {
     console.error(error);
