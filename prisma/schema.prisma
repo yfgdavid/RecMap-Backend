@@ -23,6 +23,10 @@ model Usuario {
   longitude        Float?
   data_cadastro    DateTime             @default(now())
 
+  // --- CAMPOS PARA RECUPERAÇÃO DE SENHA ---
+  resetToken        String?
+  resetTokenExpira  DateTime?
+
   // relações
   pontosColeta     PontoColeta[]
   denuncias        Denuncia[]
