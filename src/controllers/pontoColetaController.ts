@@ -54,10 +54,15 @@ export const criarPonto = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
     }
 
-    // Converte endereço → coordenadas
     const coords = await geocode(localizacao);
     const latitude = coords?.latitude ?? null;
     const longitude = coords?.longitude ?? null;
+
+    // 🔥 Converte foto para Base64 (se existir)
+    let fotoBase64 = null;
+    if (req.file) {
+      fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+    }
 
     const novoPonto = await prisma.pontoColeta.create({
       data: {
@@ -67,28 +72,19 @@ export const criarPonto = async (req: Request, res: Response) => {
         localizacao,
         latitude,
         longitude,
-        foto: req.file?.filename || null, // salva só o filename no banco
+        foto: fotoBase64,
       },
       include: { usuario: true },
     });
 
-    return res.status(201).json({
-      id: novoPonto.id_ponto,
-      tipo: "ponto",
-      titulo: novoPonto.titulo,
-      descricao: novoPonto.descricao,
-      localizacao: novoPonto.localizacao,
-      latitude: novoPonto.latitude,
-      longitude: novoPonto.longitude,
-      foto: novoPonto.foto ? `http://localhost:3333/uploads/${novoPonto.foto}` : null,
-      usuario: novoPonto.usuario.nome,
-    });
+    return res.status(201).json(novoPonto);
 
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Erro ao criar ponto de coleta." });
   }
 };
+
 
 
 export async function atualizarPonto(req: Request, res: Response) {

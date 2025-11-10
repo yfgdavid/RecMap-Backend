@@ -40,11 +40,7 @@ export async function listarDenunciasPendentes(req: Request, res: Response) {
 // Criação de denúncia
 export const criarDenuncia = async (req: Request, res: Response) => {
   try {
-    // multer processa o arquivo
     const { id_usuario, titulo, descricao, localizacao } = req.body;
-
-    console.log("📦 Dados recebidos:", req.body);
-    console.log("📸 Arquivo recebido:", req.file);
 
     if (!id_usuario || !titulo) {
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
@@ -55,20 +51,23 @@ export const criarDenuncia = async (req: Request, res: Response) => {
     let longitude: number | null = null;
     if (localizacao) {
       const coords = await geocode(localizacao);
-      if (coords) {
-        latitude = coords.latitude;
-        longitude = coords.longitude;
-      }
+      latitude = coords?.latitude ?? null;
+      longitude = coords?.longitude ?? null;
     }
 
-    // Verifica se usuário existe
+    // Verifica usuário
     const usuarioExiste = await prisma.usuario.findUnique({
       where: { id_usuario: Number(id_usuario) },
     });
     if (!usuarioExiste)
       return res.status(404).json({ error: "Usuário não encontrado." });
 
-    // Cria denúncia
+    // 🔥 Converte foto para Base64 (se existir)
+    let fotoBase64 = null;
+    if (req.file) {
+      fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+    }
+
     const novaDenuncia = await prisma.denuncia.create({
       data: {
         id_usuario: Number(id_usuario),
@@ -77,7 +76,7 @@ export const criarDenuncia = async (req: Request, res: Response) => {
         localizacao,
         latitude,
         longitude,
-        foto: req.file ? req.file.filename : null,
+        foto: fotoBase64,
         status: "PENDENTE",
       },
       include: {
@@ -86,21 +85,11 @@ export const criarDenuncia = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json({
-      id: novaDenuncia.id_denuncia,
-      titulo: novaDenuncia.titulo,
-      descricao: novaDenuncia.descricao,
-      localizacao: novaDenuncia.localizacao,
-      latitude: novaDenuncia.latitude,
-      longitude: novaDenuncia.longitude,
-      foto: novaDenuncia.foto,
-      status: novaDenuncia.status,
-      usuario: novaDenuncia.usuario.nome,
-      validacoes: [],
-    });
+    return res.status(201).json(novaDenuncia);
+    
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Erro ao criar denúncia.", details: error });
+    return res.status(500).json({ error: "Erro ao criar denúncia." });
   }
 };
 
