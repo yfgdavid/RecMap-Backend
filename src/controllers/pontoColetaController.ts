@@ -13,8 +13,10 @@ export async function listarPontos(req: Request, res: Response) {
       descricao: p.descricao,
       latitude: p.latitude,
       longitude: p.longitude,
-      id_usuario: p.usuario.nome,
+      foto: p.foto ? `/uploads/${p.foto}` : null, // <-- adiciona foto aqui
+      usuario: p.usuario.nome,
     }));
+
 
     res.json(formatados);
   } catch (error) {
@@ -52,7 +54,7 @@ export const criarPonto = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
     }
 
-    // Converte endereço → lat/lon
+    // Converte endereço → coordenadas
     const coords = await geocode(localizacao);
     const latitude = coords?.latitude ?? null;
     const longitude = coords?.longitude ?? null;
@@ -65,27 +67,28 @@ export const criarPonto = async (req: Request, res: Response) => {
         localizacao,
         latitude,
         longitude,
-        foto: req.file ? req.file.filename : null,
+        foto: req.file?.filename || null, // salva só o filename no banco
       },
       include: { usuario: true },
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       id: novoPonto.id_ponto,
+      tipo: "ponto",
       titulo: novoPonto.titulo,
       descricao: novoPonto.descricao,
       localizacao: novoPonto.localizacao,
       latitude: novoPonto.latitude,
       longitude: novoPonto.longitude,
-      foto: novoPonto.foto,
+      foto: novoPonto.foto ? `http://localhost:3333/uploads/${novoPonto.foto}` : null,
       usuario: novoPonto.usuario.nome,
     });
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Erro ao criar ponto de coleta." });
+    return res.status(500).json({ error: "Erro ao criar ponto de coleta." });
   }
 };
-
 
 
 export async function atualizarPonto(req: Request, res: Response) {

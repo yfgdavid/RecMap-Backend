@@ -12,7 +12,7 @@ const router = Router();
 
 // aqui você escolhe como armazenar as fotos
 // Usando memória -> facilita salvar em base64 ou nuvem
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ dest: "uploads/" });
 
 // Rotas
 router.get("/", listarPontos);

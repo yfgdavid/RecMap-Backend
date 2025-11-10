@@ -11,18 +11,16 @@ import validacaoRoutes from "./routes/validacao.routes";
 import mapaRoutes from "./routes/mapa.routes";
 import authRoutes from "./routes/auth.routes";
 
+
 dotenv.config();
 
 const app = express();
 
 
 app.use(cors({ origin: "*" }));
+app.use("/uploads", express.static("uploads"));
 
 
-app.use((req, res, next) => {
-  console.log("🔎 Content-Type recebido:", req.headers["content-type"]);
-  next();
-});
 
 
 
