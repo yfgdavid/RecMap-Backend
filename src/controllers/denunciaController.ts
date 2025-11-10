@@ -46,27 +46,14 @@ export const criarDenuncia = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
     }
 
-    // Geocodificação opcional
-    let latitude: number | null = null;
-    let longitude: number | null = null;
-    if (localizacao) {
-      const coords = await geocode(localizacao);
-      latitude = coords?.latitude ?? null;
-      longitude = coords?.longitude ?? null;
-    }
+    const coords = localizacao ? await geocode(localizacao) : null;
 
-    // Verifica usuário
     const usuarioExiste = await prisma.usuario.findUnique({
       where: { id_usuario: Number(id_usuario) },
     });
-    if (!usuarioExiste)
-      return res.status(404).json({ error: "Usuário não encontrado." });
+    if (!usuarioExiste) return res.status(404).json({ error: "Usuário não encontrado." });
 
-    // 🔥 Converte foto para Base64 (se existir)
-    let fotoBase64 = null;
-    if (req.file) {
-      fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-    }
+    const foto = req.file ? req.file.filename : null;
 
     const novaDenuncia = await prisma.denuncia.create({
       data: {
@@ -74,9 +61,9 @@ export const criarDenuncia = async (req: Request, res: Response) => {
         titulo,
         descricao,
         localizacao,
-        latitude,
-        longitude,
-        foto: fotoBase64,
+        latitude: coords?.latitude ?? null,
+        longitude: coords?.longitude ?? null,
+        foto,
         status: "PENDENTE",
       },
       include: {
@@ -86,7 +73,6 @@ export const criarDenuncia = async (req: Request, res: Response) => {
     });
 
     return res.status(201).json(novaDenuncia);
-    
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Erro ao criar denúncia." });

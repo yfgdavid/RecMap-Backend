@@ -58,11 +58,7 @@ export const criarPonto = async (req: Request, res: Response) => {
     const latitude = coords?.latitude ?? null;
     const longitude = coords?.longitude ?? null;
 
-    // 🔥 Converte foto para Base64 (se existir)
-    let fotoBase64 = null;
-    if (req.file) {
-      fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-    }
+    const foto = req.file ? req.file.filename : null;
 
     const novoPonto = await prisma.pontoColeta.create({
       data: {
@@ -72,13 +68,12 @@ export const criarPonto = async (req: Request, res: Response) => {
         localizacao,
         latitude,
         longitude,
-        foto: fotoBase64,
+        foto,
       },
       include: { usuario: true },
     });
 
     return res.status(201).json(novoPonto);
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Erro ao criar ponto de coleta." });

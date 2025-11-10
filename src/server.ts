@@ -10,6 +10,7 @@ import relatorioRoutes from "./routes/relatorio.routes";
 import validacaoRoutes from "./routes/validacao.routes";
 import mapaRoutes from "./routes/mapa.routes";
 import authRoutes from "./routes/auth.routes";
+import path from "path";
 
 
 dotenv.config();
@@ -17,19 +18,13 @@ dotenv.config();
 const app = express();
 
 
-app.use(cors({ origin: "*" }));
-app.use("/uploads", express.static("uploads"));
-
-
-
-
-
-app.use("/denuncias", denunciaRoutes);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors({ origin: "*" }));
 
-
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use("/denuncias", denunciaRoutes);
 app.use("/usuarios", usuarioRoutes);
 app.use("/pontos", pontoColetaRoutes);
 app.use("/relatorios", relatorioRoutes);
