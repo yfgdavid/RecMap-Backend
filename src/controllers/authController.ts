@@ -1,9 +1,10 @@
-import { Request, Response } from "express"; // <--- ADICIONE ISSO
+import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "../prisma/client";
 import { enviarEmail } from "../services/emailService";
+import { successResponse, errorResponse, validationResponse, notFoundResponse } from "../utils/responseHelper";
 
 const SECRET = process.env.JWT_SECRET || "qwertyuiopasdfghjklzxcvbnm123456";
 
@@ -12,21 +13,32 @@ export async function registerUser(req: Request, res: Response) {
     try {
         const { nome, email, senha } = req.body;
 
+        if (!nome || !email || !senha) {
+            return validationResponse(res, "Campos obrigatórios: nome, email e senha.");
+        }
+
         const existingUser = await prisma.usuario.findUnique({ where: { email } });
         if (existingUser) {
-            return res.status(400).json({ message: "Email já cadastrado." });
+            return validationResponse(res, "Este email já está cadastrado. Tente fazer login ou use outro email.");
         }
 
         const hashedPassword = await bcrypt.hash(senha, 10);
 
         const newUser = await prisma.usuario.create({
             data: { nome, email, senha: hashedPassword },
+            select: {
+                id_usuario: true,
+                nome: true,
+                email: true,
+                tipo_usuario: true,
+                data_cadastro: true,
+            },
         });
 
-        return res.status(201).json({ message: "Usuário criado com sucesso", newUser });
+        return successResponse(res, newUser, "Usuário criado com sucesso! Faça login para continuar.", 201);
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Erro ao criar usuário" });
+        console.error("Erro ao registrar usuário:", error);
+        return errorResponse(res, "Não foi possível criar sua conta. Tente novamente mais tarde.");
     }
 }
 
@@ -35,11 +47,19 @@ export async function loginUser(req: Request, res: Response) {
     try {
         const { email, senha } = req.body;
 
+        if (!email || !senha) {
+            return validationResponse(res, "Email e senha são obrigatórios.");
+        }
+
         const user = await prisma.usuario.findUnique({ where: { email } });
-        if (!user) return res.status(404).json({ message: "Usuário não encontrado." });
+        if (!user) {
+            return notFoundResponse(res, "Email ou senha incorretos. Verifique suas credenciais.");
+        }
 
         const valid = await bcrypt.compare(senha, user.senha);
-        if (!valid) return res.status(401).json({ message: "Senha incorreta." });
+        if (!valid) {
+            return validationResponse(res, "Email ou senha incorretos. Verifique suas credenciais.", 401);
+        }
 
         const token = jwt.sign(
             { id: user.id_usuario, email: user.email },
@@ -47,10 +67,20 @@ export async function loginUser(req: Request, res: Response) {
             { expiresIn: "7d" }
         );
 
-        return res.json({ message: "Login feito com sucesso", token, user });
+        const userData = {
+            id: user.id_usuario,
+            nome: user.nome,
+            email: user.email,
+            tipo_usuario: user.tipo_usuario,
+        };
+
+        return successResponse(res, {
+            token,
+            user: userData,
+        }, "Login realizado com sucesso! Bem-vindo de volta.");
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Erro ao fazer login" });
+        console.error("Erro ao fazer login:", error);
+        return errorResponse(res, "Não foi possível fazer login. Tente novamente mais tarde.");
     }
 }
 
@@ -59,10 +89,15 @@ export async function forgotPassword(req: Request, res: Response) {
   try {
     const { email } = req.body;
 
+    if (!email) {
+      return validationResponse(res, "Email é obrigatório para recuperação de senha.");
+    }
+
     // Verifica se o usuário existe
     const user = await prisma.usuario.findUnique({ where: { email } });
     if (!user) {
-      return res.status(400).json({ message: "Usuário não encontrado." });
+      // Por segurança, não revelamos se o email existe ou não
+      return successResponse(res, null, "Se o email estiver cadastrado, você receberá instruções para redefinir sua senha.");
     }
 
     // Gera token e expiração
@@ -82,19 +117,24 @@ export async function forgotPassword(req: Request, res: Response) {
     // Envia email via Brevo
     await enviarEmail(
       email,
-      "Recuperação de Senha",
+      "Recuperação de Senha - RecMap",
       `
-        <p>Olá, ${user.nome}, Obrigado por utlizar o RecMap!</p>
-        <p>Para redefinir sua senha, clique no link abaixo:</p>
-        <a href="${link}">${link}</a>
-        <p>Este link expira em 1 hora.</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #143D60;">Olá, ${user.nome}!</h2>
+          <p>Você solicitou a recuperação de senha no RecMap.</p>
+          <p>Clique no botão abaixo para redefinir sua senha:</p>
+          <a href="${link}" style="display: inline-block; padding: 12px 24px; background-color: #143D60; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">Redefinir Senha</a>
+          <p style="color: #666; font-size: 12px;">Ou copie e cole este link no seu navegador:</p>
+          <p style="color: #666; font-size: 12px; word-break: break-all;">${link}</p>
+          <p style="color: #999; font-size: 11px; margin-top: 30px;">Este link expira em 1 hora. Se você não solicitou esta recuperação, ignore este email.</p>
+        </div>
       `
     );
 
-    return res.json({ message: "Email enviado com sucesso." });
+    return successResponse(res, null, "Se o email estiver cadastrado, você receberá instruções para redefinir sua senha.");
   } catch (error) {
     console.error("Erro ao recuperar senha:", error);
-    return res.status(500).json({ message: "Erro ao recuperar senha" });
+    return errorResponse(res, "Não foi possível processar a recuperação de senha. Tente novamente mais tarde.");
   }
 }
 
@@ -103,7 +143,11 @@ export async function resetPassword(req: Request, res: Response) {
     const { token, novaSenha } = req.body;
 
     if (!token || !novaSenha) {
-      return res.status(400).json({ message: "Token e nova senha são obrigatórios." });
+      return validationResponse(res, "Token e nova senha são obrigatórios.");
+    }
+
+    if (novaSenha.length < 6) {
+      return validationResponse(res, "A senha deve ter pelo menos 6 caracteres.");
     }
 
     // Busca usuário pelo token
@@ -117,7 +161,7 @@ export async function resetPassword(req: Request, res: Response) {
     });
 
     if (!user) {
-      return res.status(400).json({ message: "Token inválido ou expirado." });
+      return validationResponse(res, "Token inválido ou expirado. Solicite uma nova recuperação de senha.");
     }
 
     // Criptografa a nova senha
@@ -133,9 +177,9 @@ export async function resetPassword(req: Request, res: Response) {
       },
     });
 
-    return res.json({ message: "Senha redefinida com sucesso." });
+    return successResponse(res, null, "Senha redefinida com sucesso! Você já pode fazer login com sua nova senha.");
   } catch (error) {
     console.error("Erro ao redefinir senha:", error);
-    return res.status(500).json({ message: "Erro ao redefinir senha." });
+    return errorResponse(res, "Não foi possível redefinir a senha. Tente novamente mais tarde.");
   }
 }

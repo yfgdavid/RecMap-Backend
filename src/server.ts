@@ -10,6 +10,7 @@ import relatorioRoutes from "./routes/relatorio.routes";
 import validacaoRoutes from "./routes/validacao.routes";
 import mapaRoutes from "./routes/mapa.routes";
 import authRoutes from "./routes/auth.routes";
+import governmentalRoutes from "./routes/governamental.routes";
 import path from "path";
 
 
@@ -31,6 +32,7 @@ app.use("/relatorios", relatorioRoutes);
 app.use("/validacoes", validacaoRoutes);
 app.use("/mapa", mapaRoutes);
 app.use("/auth", authRoutes);
+app.use("/governamental", governmentalRoutes);
 
 // 🧠 Teste rápido no navegador
 app.get("/", (req, res) => {
@@ -44,6 +46,7 @@ app.get("/", (req, res) => {
       "/validacoes",
       "/conteudos",
       "/mapa",
+      "/governamental",
     ],
   });
 });
