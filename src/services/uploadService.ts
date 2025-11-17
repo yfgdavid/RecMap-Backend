@@ -5,7 +5,7 @@ import path from "path";
 // Configuração do storage do multer
 export const upload = multer({
   storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, path.join(__dirname, "..", "..", "uploads")),
+    destination: (req, file, cb) => cb(null, path.resolve("uploads")),
     filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
   }),
 });
