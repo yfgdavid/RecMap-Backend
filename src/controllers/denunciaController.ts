@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 import { upload, geocode } from "../services/uploadService";
+import { getFile } from "../utils/getFile";
 
 export async function listarDenunciasPendentes(req: Request, res: Response) {
   try {
@@ -97,7 +98,7 @@ export async function listarDenuncias(req: Request, res: Response) {
       localizacao: d.localizacao,
       latitude: d.latitude,
       longitude: d.longitude,
-      foto: d.foto,
+      foto: getFile(d.foto) ,
       status: d.status,
       usuario: d.usuario.nome,
       validacoes: d.validacoes.map(v => ({
