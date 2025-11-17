@@ -180,7 +180,54 @@ npm start
 
 ---
 
-## 📝 Variáveis de Ambiente Necessárias
+## 🔄 Git - Sincronizando com o Repositório Remoto
+
+### Fluxo Recomendado (com Feature Branch e Pull Request)
+
+1.  **Crie e mude para uma nova branch:**
+    ```bash
+    git checkout -b nome-da-sua-branch 
+    # Ex: git checkout -b feature/tela-de-login
+    ```
+
+2.  **Faça suas alterações e adicione ao "stage":**
+    ```bash
+    git add .
+    ```
+
+3.  **Crie um commit com uma mensagem descritiva:**
+    ```bash
+    git commit -m "feat: adiciona validação de formulário"
+    ```
+
+4.  **Envie sua branch para o repositório remoto:**
+    ```bash
+    git push origin nome-da-sua-branch
+    ```
+
+5.  **Abra um Pull Request (PR)** no GitHub/GitLab para mesclar suas alterações na `main`.
+
+### Fluxo Rápido (Direto na `main` - Cuidado!)
+
+**⚠️ Use apenas se estiver trabalhando sozinho no projeto.**
+
+```bash
+# 1. Adiciona todas as alterações
+git add .
+
+# 2. Cria o commit
+git commit -m "fix: corrige bug no cálculo"
+
+# 3. Puxa atualizações remotas para evitar conflitos
+git pull origin main
+
+# 4. Envia suas alterações para a main
+git push origin main
+```
+
+---
+
+##  Variáveis de Ambiente Necessárias
 
 Certifique-se de que o arquivo `.env` contém:
 
@@ -252,4 +299,3 @@ npm run dev
 ---
 
 **🎉 Pronto! Agora você tem todos os comandos necessários!**
-

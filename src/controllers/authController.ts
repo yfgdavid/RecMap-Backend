@@ -68,16 +68,25 @@ export async function loginUser(req: Request, res: Response) {
         );
 
         const userData = {
-            id: user.id_usuario,
+            id_usuario: user.id_usuario,
+            id: user.id_usuario, // Compatibilidade
             nome: user.nome,
             email: user.email,
             tipo_usuario: user.tipo_usuario,
         };
 
-        return successResponse(res, {
+        // Retornar no formato que o frontend espera (compatibilidade)
+        return res.json({
+            success: true,
+            message: "Login realizado com sucesso! Bem-vindo de volta.",
+            type: "success",
             token,
             user: userData,
-        }, "Login realizado com sucesso! Bem-vindo de volta.");
+            data: {
+                token,
+                user: userData,
+            },
+        });
     } catch (error) {
         console.error("Erro ao fazer login:", error);
         return errorResponse(res, "Não foi possível fazer login. Tente novamente mais tarde.");
