@@ -23,7 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: "*" }));
 
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use("/uploads", express.static(path.resolve("uploads")));
 app.use("/denuncias", denunciaRoutes);
 app.use("/usuarios", usuarioRoutes);
 app.use("/pontos", pontoColetaRoutes);
