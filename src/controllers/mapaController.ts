@@ -1,8 +1,6 @@
 import { prisma } from "../prisma/client";
 import { Request, Response } from "express";
-import { getFile } from "../utils/getFile";
-
-const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333") + "/uploads/";
+import { getFile } from "../services/uploadService";
 
 export async function listarMapa(req: Request, res: Response) {
   try {
