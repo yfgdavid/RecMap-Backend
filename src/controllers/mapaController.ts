@@ -1,7 +1,6 @@
 import { prisma } from "../prisma/client";
 import { Request, Response } from "express";
-
-const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333") + "/uploads/";
+import { getFile } from "../services/uploadService";
 
 export async function listarMapa(req: Request, res: Response) {
   try {
@@ -19,7 +18,7 @@ export async function listarMapa(req: Request, res: Response) {
           latitude: p.latitude,
           longitude: p.longitude,
           criado_por: p.usuario.nome,
-          foto: p.foto ? `${BASE_URL}${p.foto}` : null,
+          foto: getFile(p.foto)
         }))
       );
     }
@@ -36,7 +35,7 @@ export async function listarMapa(req: Request, res: Response) {
           longitude: d.longitude,
           enviado_por: d.usuario.nome,
           status: d.status,
-          foto: d.foto ? `${BASE_URL}${d.foto}` : null,
+          foto: getFile(d.foto)
         }))
       );
     }

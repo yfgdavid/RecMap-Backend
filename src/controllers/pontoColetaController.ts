@@ -2,6 +2,7 @@ import { isDataView } from "util/types";
 import { prisma } from "../prisma/client";
 import { Request, Response } from "express";
 import { geocode } from "../services/uploadService"; // <-- usa a sua funçã
+import { getFile } from "../services/uploadService";
 
 export async function listarPontos(req: Request, res: Response) {
   try {
@@ -13,7 +14,7 @@ export async function listarPontos(req: Request, res: Response) {
       descricao: p.descricao,
       latitude: p.latitude,
       longitude: p.longitude,
-      foto: p.foto ? `/uploads/${p.foto}` : null, // <-- adiciona foto aqui
+      foto: getFile(p.foto) , // <-- adiciona foto aqui
       usuario: p.usuario.nome,
     }));
 

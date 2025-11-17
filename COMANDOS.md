@@ -220,6 +220,8 @@ git commit -m "fix: corrige bug no cálculo"
 
 # 3. Puxa atualizações remotas para evitar conflitos
 git pull origin main
+git pull origin main # Se este passo falhar com um erro, veja a seção de Troubleshooting Git.
+# Se este passo der erro de "failed to push", é porque você esqueceu de puxar antes.
 
 # 4. Envia suas alterações para a main
 git push origin main
