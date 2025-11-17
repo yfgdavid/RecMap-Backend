@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
 import { upload, geocode } from "../services/uploadService";
-import { getFile } from "../utils/getFile";
+import { getFile } from "../services/uploadService";
 
 export async function listarDenunciasPendentes(req: Request, res: Response) {
   try {
