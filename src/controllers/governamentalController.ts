@@ -92,9 +92,180 @@ export async function getDashboardStats(req: Request, res: Response) {
       ? ((denunciasResolvidas / totalDenuncias) * 100).toFixed(1)
       : "0.0";
 
+    // Calcular dados do mês atual e mês anterior para variações
+    const agora = new Date();
+    const inicioMesAtual = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const inicioMesAnterior = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+
+    // Denúncias do mês atual
+    const denunciasMesAtual = await prisma.denuncia.count({
+      where: {
+        data_criacao: {
+          gte: inicioMesAtual,
+        },
+      },
+    });
+
+    // Denúncias do mês anterior
+    const denunciasMesAnterior = await prisma.denuncia.count({
+      where: {
+        data_criacao: {
+          gte: inicioMesAnterior,
+          lt: inicioMesAtual,
+        },
+      },
+    });
+
+    // Variação percentual de denúncias
+    const variacaoDenuncias = denunciasMesAnterior > 0
+      ? (((denunciasMesAtual - denunciasMesAnterior) / denunciasMesAnterior) * 100).toFixed(0)
+      : denunciasMesAtual > 0 ? "100" : "0";
+
+    // Usuários ativos (usuários que fizeram alguma ação no último mês)
+    const usuariosAtivos = await prisma.usuario.count({
+      where: {
+        OR: [
+          { denuncias: { some: { data_criacao: { gte: inicioMesAtual } } } },
+          { validacoes: { some: { data_validacao: { gte: inicioMesAtual } } } },
+          { pontosColeta: { some: { data_criacao: { gte: inicioMesAtual } } } },
+        ],
+      },
+    });
+
+    const usuariosAtivosMesAnterior = await prisma.usuario.count({
+      where: {
+        OR: [
+          { denuncias: { some: { data_criacao: { gte: inicioMesAnterior, lt: inicioMesAtual } } } },
+          { validacoes: { some: { data_validacao: { gte: inicioMesAnterior, lt: inicioMesAtual } } } },
+          { pontosColeta: { some: { data_criacao: { gte: inicioMesAnterior, lt: inicioMesAtual } } } },
+        ],
+      },
+    });
+
+    const variacaoUsuarios = usuariosAtivosMesAnterior > 0
+      ? (((usuariosAtivos - usuariosAtivosMesAnterior) / usuariosAtivosMesAnterior) * 100).toFixed(0)
+      : usuariosAtivos > 0 ? "100" : "0";
+
+    // Novos pontos de coleta do mês
+    const novosPontosMes = await prisma.pontoColeta.count({
+      where: {
+        data_criacao: {
+          gte: inicioMesAtual,
+        },
+      },
+    });
+
+    // Evolução mensal (últimos 6 meses)
+    const evolucaoMensal = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const dataInicio = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      const dataFim = new Date(agora.getFullYear(), agora.getMonth() - i + 1, 0, 23, 59, 59);
+      
+      const [totalMes, resolvidasMes] = await Promise.all([
+        prisma.denuncia.count({
+          where: {
+            data_criacao: {
+              gte: dataInicio,
+              lte: dataFim,
+            },
+          },
+        }),
+        prisma.denuncia.count({
+          where: {
+            data_criacao: {
+              gte: dataInicio,
+              lte: dataFim,
+            },
+            status: "RESOLVIDA",
+          },
+        }),
+      ]);
+
+      const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      
+      evolucaoMensal.push({
+        mes: nomesMeses[dataInicio.getMonth()],
+        total: totalMes,
+        resolvidas: resolvidasMes,
+      });
+    }
+
+    // Distribuição por tipo (usando descrição/título das denúncias como proxy)
+    // Como não temos campo de tipo de resíduo, vamos usar palavras-chave
+    const todasDenuncias = await prisma.denuncia.findMany({
+      select: { descricao: true, titulo: true },
+    });
+
+    let organico = 0;
+    let reciclavel = 0;
+    let perigoso = 0;
+    let eletronico = 0;
+
+    const palavrasOrganico = ["orgânico", "organico", "orgânica", "organica", "lixo orgânico", "restos", "comida"];
+    const palavrasReciclavel = ["reciclável", "reciclavel", "reciclagem", "papel", "plástico", "plastico", "vidro", "metal"];
+    const palavrasPerigoso = ["perigoso", "tóxico", "toxico", "veneno", "químico", "quimico", "bateria"];
+    const palavrasEletronico = ["eletrônico", "eletronico", "eletrônicos", "eletronicos", "pilha", "bateria", "celular", "computador"];
+
+    todasDenuncias.forEach((d) => {
+      const texto = `${d.titulo} ${d.descricao}`.toLowerCase();
+      
+      if (palavrasEletronico.some(p => texto.includes(p))) {
+        eletronico++;
+      } else if (palavrasPerigoso.some(p => texto.includes(p))) {
+        perigoso++;
+      } else if (palavrasReciclavel.some(p => texto.includes(p))) {
+        reciclavel++;
+      } else if (palavrasOrganico.some(p => texto.includes(p))) {
+        organico++;
+      } else {
+        // Se não encontrar, distribui proporcionalmente ou coloca como "outros"
+        reciclavel++; // Default
+      }
+    });
+
+    const totalTipos = organico + reciclavel + perigoso + eletronico;
+    const distribuicaoTipos = totalTipos > 0 ? [
+      { tipo: "Orgânico", porcentagem: Math.round((organico / totalTipos) * 100), quantidade: organico },
+      { tipo: "Reciclável", porcentagem: Math.round((reciclavel / totalTipos) * 100), quantidade: reciclavel },
+      { tipo: "Perigoso", porcentagem: Math.round((perigoso / totalTipos) * 100), quantidade: perigoso },
+      { tipo: "Eletrônico", porcentagem: Math.round((eletronico / totalTipos) * 100), quantidade: eletronico },
+    ] : [
+      { tipo: "Orgânico", porcentagem: 0, quantidade: 0 },
+      { tipo: "Reciclável", porcentagem: 0, quantidade: 0 },
+      { tipo: "Perigoso", porcentagem: 0, quantidade: 0 },
+      { tipo: "Eletrônico", porcentagem: 0, quantidade: 0 },
+    ];
+
     res.json({
       success: true,
       data: {
+        // Cards principais
+        cards: {
+          totalDenuncias: {
+            valor: totalDenuncias,
+            variacao: `${variacaoDenuncias >= 0 ? "+" : ""}${variacaoDenuncias}%`,
+            periodo: "este mês",
+            tendencia: Number(variacaoDenuncias) >= 0 ? "up" : "down",
+          },
+          denunciasResolvidas: {
+            valor: denunciasResolvidas,
+            taxa: `${taxaResolucao}% de resolução`,
+            tendencia: "up",
+          },
+          usuariosAtivos: {
+            valor: usuariosAtivos,
+            variacao: `${variacaoUsuarios >= 0 ? "+" : ""}${variacaoUsuarios}%`,
+            periodo: "este mês",
+            tendencia: Number(variacaoUsuarios) >= 0 ? "up" : "down",
+          },
+          pontosColeta: {
+            valor: totalPontosColeta,
+            novos: novosPontosMes > 0 ? `+${novosPontosMes} novos pontos` : "Sem novos pontos",
+            tendencia: "up",
+          },
+        },
+        // Estatísticas detalhadas
         estatisticas: {
           denuncias: {
             total: totalDenuncias,
@@ -110,9 +281,11 @@ export async function getDashboardStats(req: Request, res: Response) {
           },
           pontosColeta: {
             total: totalPontosColeta,
+            novosEsteMes: novosPontosMes,
           },
           usuarios: {
             total: totalUsuarios,
+            ativos: usuariosAtivos,
             cidadaos: usuariosCidadaos,
             governamentais: usuariosGovernamentais,
           },
@@ -122,6 +295,12 @@ export async function getDashboardStats(req: Request, res: Response) {
             contestacoes: validacoesContestar,
           },
         },
+        // Gráficos
+        graficos: {
+          evolucaoMensal: evolucaoMensal,
+          distribuicaoTipos: distribuicaoTipos,
+        },
+        // Dados recentes
         recentes: {
           denuncias: denunciasRecentes.map((d) => ({
             id: d.id_denuncia,
