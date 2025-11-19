@@ -117,9 +117,10 @@ export async function getDashboardStats(req: Request, res: Response) {
     });
 
     // Variação percentual de denúncias
-    const variacaoDenuncias = denunciasMesAnterior > 0
-      ? (((denunciasMesAtual - denunciasMesAnterior) / denunciasMesAnterior) * 100).toFixed(0)
-      : denunciasMesAtual > 0 ? "100" : "0";
+    const variacaoDenunciasNum = denunciasMesAnterior > 0
+      ? (((denunciasMesAtual - denunciasMesAnterior) / denunciasMesAnterior) * 100)
+      : denunciasMesAtual > 0 ? 100 : 0;
+    const variacaoDenuncias = variacaoDenunciasNum.toFixed(0);
 
     // Usuários ativos (usuários que fizeram alguma ação no último mês)
     const usuariosAtivos = await prisma.usuario.count({
@@ -142,9 +143,10 @@ export async function getDashboardStats(req: Request, res: Response) {
       },
     });
 
-    const variacaoUsuarios = usuariosAtivosMesAnterior > 0
-      ? (((usuariosAtivos - usuariosAtivosMesAnterior) / usuariosAtivosMesAnterior) * 100).toFixed(0)
-      : usuariosAtivos > 0 ? "100" : "0";
+    const variacaoUsuariosNum = usuariosAtivosMesAnterior > 0
+      ? (((usuariosAtivos - usuariosAtivosMesAnterior) / usuariosAtivosMesAnterior) * 100)
+      : usuariosAtivos > 0 ? 100 : 0;
+    const variacaoUsuarios = variacaoUsuariosNum.toFixed(0);
 
     // Novos pontos de coleta do mês
     const novosPontosMes = await prisma.pontoColeta.count({
@@ -244,9 +246,9 @@ export async function getDashboardStats(req: Request, res: Response) {
         cards: {
           totalDenuncias: {
             valor: totalDenuncias,
-            variacao: `${variacaoDenuncias >= 0 ? "+" : ""}${variacaoDenuncias}%`,
+            variacao: `${variacaoDenunciasNum >= 0 ? "+" : ""}${variacaoDenuncias}%`,
             periodo: "este mês",
-            tendencia: Number(variacaoDenuncias) >= 0 ? "up" : "down",
+            tendencia: variacaoDenunciasNum >= 0 ? "up" : "down",
           },
           denunciasResolvidas: {
             valor: denunciasResolvidas,
@@ -255,9 +257,9 @@ export async function getDashboardStats(req: Request, res: Response) {
           },
           usuariosAtivos: {
             valor: usuariosAtivos,
-            variacao: `${variacaoUsuarios >= 0 ? "+" : ""}${variacaoUsuarios}%`,
+            variacao: `${variacaoUsuariosNum >= 0 ? "+" : ""}${variacaoUsuarios}%`,
             periodo: "este mês",
-            tendencia: Number(variacaoUsuarios) >= 0 ? "up" : "down",
+            tendencia: variacaoUsuariosNum >= 0 ? "up" : "down",
           },
           pontosColeta: {
             valor: totalPontosColeta,
