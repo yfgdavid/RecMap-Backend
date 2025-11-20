@@ -11,11 +11,36 @@ const SECRET = process.env.JWT_SECRET || "qwertyuiopasdfghjklzxcvbnm123456";
 // ======================= REGISTER =======================
 export async function registerUser(req: Request, res: Response) {
     try {
-        const { nome, email, senha } = req.body;
+        const { nome, nomeCompleto, email, senha, confirmarSenha, tipo_usuario } = req.body;
 
-        if (!nome || !email || !senha) {
+        // Aceitar tanto 'nome' quanto 'nomeCompleto' para compatibilidade
+        const nomeFinal = nome || nomeCompleto;
+
+        if (!nomeFinal || !email || !senha) {
             return validationResponse(res, "Campos obrigatórios: nome, email e senha.");
         }
+
+        // Validar confirmação de senha se fornecida
+        if (confirmarSenha && senha !== confirmarSenha) {
+            return validationResponse(res, "As senhas não coincidem. Verifique e tente novamente.");
+        }
+
+        // Validar formato de email básico
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return validationResponse(res, "Email inválido. Verifique o formato e tente novamente.");
+        }
+
+        // Validar tamanho mínimo da senha
+        if (senha.length < 6) {
+            return validationResponse(res, "A senha deve ter pelo menos 6 caracteres.");
+        }
+
+        // Validar tipo de usuário (deve ser GOVERNAMENTAL ou CIDADAO)
+        const tiposValidos = ["GOVERNAMENTAL", "CIDADAO"];
+        const tipoFinal = tipo_usuario && tiposValidos.includes(tipo_usuario.toUpperCase()) 
+            ? tipo_usuario.toUpperCase() 
+            : "CIDADAO"; // Padrão é CIDADAO
 
         const existingUser = await prisma.usuario.findUnique({ where: { email } });
         if (existingUser) {
@@ -25,7 +50,12 @@ export async function registerUser(req: Request, res: Response) {
         const hashedPassword = await bcrypt.hash(senha, 10);
 
         const newUser = await prisma.usuario.create({
-            data: { nome, email, senha: hashedPassword },
+            data: { 
+                nome: nomeFinal, 
+                email, 
+                senha: hashedPassword,
+                tipo_usuario: tipoFinal as "GOVERNAMENTAL" | "CIDADAO"
+            },
             select: {
                 id_usuario: true,
                 nome: true,
@@ -35,7 +65,14 @@ export async function registerUser(req: Request, res: Response) {
             },
         });
 
-        return successResponse(res, newUser, "Usuário criado com sucesso! Faça login para continuar.", 201);
+        // Retornar no formato compatível com o frontend
+        return res.status(201).json({
+            success: true,
+            message: "Usuário criado com sucesso! Faça login para continuar.",
+            type: "success",
+            data: newUser,
+            user: newUser, // Compatibilidade
+        });
     } catch (error) {
         console.error("Erro ao registrar usuário:", error);
         return errorResponse(res, "Não foi possível criar sua conta. Tente novamente mais tarde.");
@@ -190,5 +227,71 @@ export async function resetPassword(req: Request, res: Response) {
   } catch (error) {
     console.error("Erro ao redefinir senha:", error);
     return errorResponse(res, "Não foi possível redefinir a senha. Tente novamente mais tarde.");
+  }
+}
+
+// ======================= VALIDATE TOKEN / ME =======================
+/**
+ * Valida o token JWT e retorna os dados do usuário autenticado
+ * Usado para restaurar sessão quando o frontend recarrega a página
+ */
+export async function validateToken(req: Request, res: Response) {
+  try {
+    // Extrair token do header Authorization
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return unauthorizedResponse(res, "Token não fornecido. Faça login novamente.");
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+
+    if (!token) {
+      return unauthorizedResponse(res, "Token não fornecido. Faça login novamente.");
+    }
+
+    // Verificar e decodificar o token
+    let decoded: { id: number; email: string };
+    try {
+      decoded = jwt.verify(token, SECRET) as { id: number; email: string };
+    } catch (error) {
+      return unauthorizedResponse(res, "Token inválido ou expirado. Faça login novamente.");
+    }
+
+    // Buscar usuário no banco de dados
+    const user = await prisma.usuario.findUnique({
+      where: { id_usuario: decoded.id },
+      select: {
+        id_usuario: true,
+        nome: true,
+        email: true,
+        tipo_usuario: true,
+      },
+    });
+
+    if (!user) {
+      return unauthorizedResponse(res, "Usuário não encontrado. Faça login novamente.");
+    }
+
+    // Formatar resposta no formato que o frontend espera
+    const userData = {
+      id: user.id_usuario,
+      id_usuario: user.id_usuario,
+      nome: user.nome,
+      name: user.nome, // Compatibilidade
+      email: user.email,
+      tipo: user.tipo_usuario === "GOVERNAMENTAL" ? "government" : "citizen",
+      tipo_usuario: user.tipo_usuario,
+    };
+
+    // Retornar dados do usuário (token pode ser reutilizado ou renovado)
+    return res.json({
+      success: true,
+      user: userData,
+      token: token, // Retorna o mesmo token (ou pode gerar um novo se quiser)
+    });
+  } catch (error) {
+    console.error("Erro ao validar token:", error);
+    return errorResponse(res, "Erro ao validar sessão. Faça login novamente.");
   }
 }
