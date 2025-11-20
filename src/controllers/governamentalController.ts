@@ -8,24 +8,6 @@ const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333") + "/upload
  */
 export async function getDashboardStats(req: Request, res: Response) {
   try {
-    // Verificar se o usuário é governamental
-    const id_usuario = Number(req.query.id_usuario || req.body.id_usuario);
-    
-    if (id_usuario) {
-      const usuario = await prisma.usuario.findUnique({
-        where: { id_usuario },
-        select: { tipo_usuario: true },
-      });
-
-      if (usuario && usuario.tipo_usuario !== "GOVERNAMENTAL") {
-        return res.status(403).json({
-          success: false,
-          message: "Acesso negado. Apenas usuários governamentais podem acessar este dashboard.",
-          type: "error"
-        });
-      }
-    }
-
     // Estatísticas de denúncias
     const totalDenuncias = await prisma.denuncia.count();
     const denunciasPendentes = await prisma.denuncia.count({
@@ -193,50 +175,52 @@ export async function getDashboardStats(req: Request, res: Response) {
       });
     }
 
-    // Distribuição por tipo (usando descrição/título das denúncias como proxy)
-    // Como não temos campo de tipo de resíduo, vamos usar palavras-chave
+    // Distribuição por tipo de denúncia (usando descrição/título das denúncias como proxy)
+    // Como não temos campo de tipo de denúncia, vamos usar palavras-chave
     const todasDenuncias = await prisma.denuncia.findMany({
       select: { descricao: true, titulo: true },
     });
 
-    let organico = 0;
-    let reciclavel = 0;
-    let perigoso = 0;
-    let eletronico = 0;
+    let descarteIrregular = 0;
+    let pontoColetaDanificado = 0;
+    let entulho = 0;
+    let esgotoCeuAberto = 0;
+    let outros = 0;
 
-    const palavrasOrganico = ["orgânico", "organico", "orgânica", "organica", "lixo orgânico", "restos", "comida"];
-    const palavrasReciclavel = ["reciclável", "reciclavel", "reciclagem", "papel", "plástico", "plastico", "vidro", "metal"];
-    const palavrasPerigoso = ["perigoso", "tóxico", "toxico", "veneno", "químico", "quimico", "bateria"];
-    const palavrasEletronico = ["eletrônico", "eletronico", "eletrônicos", "eletronicos", "pilha", "bateria", "celular", "computador"];
+    const palavrasDescarteIrregular = ["descarte irregular", "descarte", "irregular", "lixo", "jogado", "descartado", "abandonado", "jogar lixo"];
+    const palavrasPontoColetaDanificado = ["ponto de coleta", "coleta danificado", "coleta quebrado", "coleta danificada", "ponto quebrado", "ponto danificado", "container", "lixeira"];
+    const palavrasEntulho = ["entulho", "construção", "obra", "demolição", "material de construção", "cimento", "tijolo", "areia"];
+    const palavrasEsgotoCeuAberto = ["esgoto", "esgoto a céu aberto", "esgoto a ceu aberto", "água servida", "água suja", "fossa", "vala", "bueiro"];
 
     todasDenuncias.forEach((d) => {
       const texto = `${d.titulo} ${d.descricao}`.toLowerCase();
       
-      if (palavrasEletronico.some(p => texto.includes(p))) {
-        eletronico++;
-      } else if (palavrasPerigoso.some(p => texto.includes(p))) {
-        perigoso++;
-      } else if (palavrasReciclavel.some(p => texto.includes(p))) {
-        reciclavel++;
-      } else if (palavrasOrganico.some(p => texto.includes(p))) {
-        organico++;
+      if (palavrasEsgotoCeuAberto.some(p => texto.includes(p))) {
+        esgotoCeuAberto++;
+      } else if (palavrasEntulho.some(p => texto.includes(p))) {
+        entulho++;
+      } else if (palavrasPontoColetaDanificado.some(p => texto.includes(p))) {
+        pontoColetaDanificado++;
+      } else if (palavrasDescarteIrregular.some(p => texto.includes(p))) {
+        descarteIrregular++;
       } else {
-        // Se não encontrar, distribui proporcionalmente ou coloca como "outros"
-        reciclavel++; // Default
+        outros++;
       }
     });
 
-    const totalTipos = organico + reciclavel + perigoso + eletronico;
+    const totalTipos = descarteIrregular + pontoColetaDanificado + entulho + esgotoCeuAberto + outros;
     const distribuicaoTipos = totalTipos > 0 ? [
-      { tipo: "Orgânico", porcentagem: Math.round((organico / totalTipos) * 100), quantidade: organico },
-      { tipo: "Reciclável", porcentagem: Math.round((reciclavel / totalTipos) * 100), quantidade: reciclavel },
-      { tipo: "Perigoso", porcentagem: Math.round((perigoso / totalTipos) * 100), quantidade: perigoso },
-      { tipo: "Eletrônico", porcentagem: Math.round((eletronico / totalTipos) * 100), quantidade: eletronico },
+      { tipo: "Descarte Irregular", porcentagem: Math.round((descarteIrregular / totalTipos) * 100), quantidade: descarteIrregular },
+      { tipo: "Ponto de Coleta Danificado", porcentagem: Math.round((pontoColetaDanificado / totalTipos) * 100), quantidade: pontoColetaDanificado },
+      { tipo: "Entulho", porcentagem: Math.round((entulho / totalTipos) * 100), quantidade: entulho },
+      { tipo: "Esgoto a Céu Aberto", porcentagem: Math.round((esgotoCeuAberto / totalTipos) * 100), quantidade: esgotoCeuAberto },
+      { tipo: "Outros", porcentagem: Math.round((outros / totalTipos) * 100), quantidade: outros },
     ] : [
-      { tipo: "Orgânico", porcentagem: 0, quantidade: 0 },
-      { tipo: "Reciclável", porcentagem: 0, quantidade: 0 },
-      { tipo: "Perigoso", porcentagem: 0, quantidade: 0 },
-      { tipo: "Eletrônico", porcentagem: 0, quantidade: 0 },
+      { tipo: "Descarte Irregular", porcentagem: 0, quantidade: 0 },
+      { tipo: "Ponto de Coleta Danificado", porcentagem: 0, quantidade: 0 },
+      { tipo: "Entulho", porcentagem: 0, quantidade: 0 },
+      { tipo: "Esgoto a Céu Aberto", porcentagem: 0, quantidade: 0 },
+      { tipo: "Outros", porcentagem: 0, quantidade: 0 },
     ];
 
     res.json({
