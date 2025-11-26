@@ -34,7 +34,7 @@ app.use("/mapa", mapaRoutes);
 app.use("/auth", authRoutes);
 app.use("/governamental", governmentalRoutes);
 
-// 🧠 Teste rápido no navegador
+
 app.get("/", (req, res) => {
   res.json({
     mensagem: "🚀 API RecMap rodando com sucesso!",
