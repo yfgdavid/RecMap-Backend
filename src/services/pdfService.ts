@@ -91,7 +91,15 @@ function drawPieChart(doc: any, data: any[], centerX: number, centerY: number, r
   };
 
   let startAngle = -Math.PI / 2;
-  const slices = [];
+  
+  // 🔥 CORRIGIDO: Adicione tipagem
+  const slices: Array<{
+    item: any;
+    startAngle: number;
+    sliceAngle: number;
+    color: string;
+    percentage: string;
+  }> = [];
 
   data.forEach((item) => {
     const sliceAngle = (item.count / total) * 2 * Math.PI;
@@ -149,7 +157,6 @@ function drawPieChart(doc: any, data: any[], centerX: number, centerY: number, r
     legendY += 14;
   });
 }
-
 export async function generateInfograficoPDF(
   data: InfograficoData
 ): Promise<Buffer> {
