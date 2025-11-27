@@ -1,4 +1,7 @@
+# src/services/pdf-service-python/generate_pdf.py
 import io
+import sys
+import json
 import matplotlib.pyplot as plt
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -7,11 +10,13 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 
+
 # --- ESQUEMA DE CORES ---
 COR_PRIMARIA = HexColor("#143D60")  # Azul Escuro (RecMap)
 COR_SECUNDARIA = HexColor("#A0C878")  # Verde Claro (RecMap)
 COR_DESTAQUE = HexColor("#DDEB9D")  # Amarelo/Verde (RecMap)
 COR_TEXTO = HexColor("#333333")
+
 
 class InfograficoData:
     """Estrutura de dados para entrada do TypeScript."""
@@ -22,7 +27,9 @@ class InfograficoData:
         self.totalPontosColeta = totalPontosColeta
         self.denunciasPorStatus = denunciasPorStatus
 
+
 from reportlab.lib.pagesizes import letter
+
 
 def draw_header(canvas, doc):
     """Desenha o cabeçalho fixo no topo real da página."""
@@ -59,19 +66,19 @@ def draw_header(canvas, doc):
     text_width = canvas.stringWidth(title, "Helvetica-Bold", 20)
 
     canvas.drawString(
-    (page_width - text_width) / 2,   # centraliza horizontalmente
-    y + 40,                          # ajusta verticalmente dentro do header
-    title
-)
+        (page_width - text_width) / 2,   # centraliza horizontalmente
+        y + 40,                          # ajusta verticalmente dentro do header
+        title
+    )
     canvas.setFont("Helvetica", 12)
     subtitle = "Gestão de Resíduos Sólidos Urbanos"
     subtitle_width = canvas.stringWidth(subtitle, "Helvetica", 12)
 
     canvas.drawString(
-    (page_width - subtitle_width) / 2,   # centralizado
-    y + 20,                              # posição vertical
-    subtitle
-)
+        (page_width - subtitle_width) / 2,   # centralizado
+        y + 20,                              # posição vertical
+        subtitle
+    )
     # --- DATA ---
     import datetime
     now = datetime.date.today().strftime("%d/%m/%Y")
@@ -85,6 +92,7 @@ def draw_header(canvas, doc):
 
     canvas.restoreState()
 
+
 def draw_footer(canvas, doc):
     canvas.saveState()
     canvas.setFillColor(COR_PRIMARIA)
@@ -96,6 +104,7 @@ def draw_footer(canvas, doc):
     canvas.drawRightString(doc.width + doc.leftMargin - 50, 10, "Relatório Gerencial")
 
     canvas.restoreState()
+
 
 def draw_kpi_card(canvas, title, value, color, x, y):
     width = 150
@@ -118,6 +127,7 @@ def draw_kpi_card(canvas, title, value, color, x, y):
     canvas.setFillColor(COR_PRIMARIA)
     canvas.setFont('Helvetica-Bold', 20)
     canvas.drawString(x + 10, y + 15, str(value))
+
 
 def create_pie_chart(data_list):
     """Cria um gráfico de pizza com Matplotlib e retorna como imagem em memória."""
@@ -153,6 +163,7 @@ def create_pie_chart(data_list):
     plt.close(fig)
     buf.seek(0)
     return buf
+
 
 def generate_infografico_pdf(data: InfograficoData):
     """Gera o PDF com base nos dados fornecidos."""
@@ -240,42 +251,49 @@ def generate_infografico_pdf(data: InfograficoData):
     # 6. Construção do PDF
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
 
-    # 7. Desenho dos KPIs (precisa ser feito após o build para ter acesso ao canvas final)
-    # Como usamos SimpleDocTemplate, o desenho de elementos fixos (como os cards) é mais complexo.
-    # Para simplificar o exemplo, vamos desenhar os cards em uma posição fixa na primeira página.
-    # O ReportLab é baseado em "flowables" (elementos que fluem), e desenhar em posições fixas
-    # requer o uso de templates de página ou a função `afterPage`.
-
-    # Para este exemplo, vamos retornar o buffer e o usuário pode adaptar a lógica de desenho
-    # de KPIs para o fluxo de ReportLab (usando `canvas.showPage()` e desenhando diretamente).
-
-    # Para simular o desenho dos KPIs no SimpleDocTemplate, vamos usar a função `afterPage`
-    # e desenhar os cards na posição esperada (abaixo do título principal).
-
-    # NOTA: A implementação completa do layout do TS no ReportLab é complexa.
-    # O exemplo foca na migração da lógica e na inclusão de gráficos.
-
     # Retorna o conteúdo do PDF como bytes
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
 
-# --- SIMULAÇÃO DE DADOS ---
-# Os dados viriam do seu backend (que você mencionou que será em Python)
-simulated_data = InfograficoData(
-    totalDenuncias=150,
-    denunciasPendentes=30,
-    denunciasValidadas=100,
-    totalPontosColeta=45,
-    denunciasPorStatus=[
-        {'status': 'VALIDADA', 'count': 100},
-        {'status': 'PENDENTE', 'count': 30},
-        {'status': 'REJEITADA', 'count': 20},
-    ]
-)
+
+def main():
+    """Função principal para ser chamada pelo Node.js via subprocess."""
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "Arquivo de dados JSON não fornecido"}))
+        sys.exit(1)
+    
+    try:
+        json_file = sys.argv[1]
+        
+        # Lê os dados do arquivo JSON
+        with open(json_file, 'r', encoding='utf-8') as f:
+            data_dict = json.load(f)
+        
+        # Converte para objeto InfograficoData
+        infografico_data = InfograficoData(
+            totalDenuncias=data_dict['totalDenuncias'],
+            denunciasPendentes=data_dict['denunciasPendentes'],
+            denunciasValidadas=data_dict['denunciasValidadas'],
+            totalPontosColeta=data_dict['totalPontosColeta'],
+            denunciasPorStatus=data_dict['denunciasPorStatus']
+        )
+        
+        # Gera o PDF
+        pdf_bytes = generate_infografico_pdf(infografico_data)
+        
+        # Salva em arquivo temporário
+        output_file = json_file.replace('.json', '.pdf')
+        with open(output_file, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # Retorna caminho do arquivo
+        print(json.dumps({"success": True, "file": output_file}))
+        
+    except Exception as e:
+        print(json.dumps({"error": str(e)}))
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    pdf_content = generate_infografico_pdf(simulated_data)
-    with open("relatorio_infografico.pdf", "wb") as f:
-        f.write(pdf_content)
-    print("PDF gerado com sucesso: relatorio_infografico.pdf")
+    main()
