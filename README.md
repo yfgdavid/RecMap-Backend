@@ -40,18 +40,28 @@ Email: Nodemailer + Brevo SMTP
 
 ✨ Funcionalidades
 Módulo	Status	Endpoints Principais
+
 Autenticação	✅ Completo	POST /auth/register, POST /auth/login, POST /auth/forgot-password
+
 Denúncias	✅ Completo	GET/POST /denuncias, GET /denuncias/pendentes/:idusuario
+
 Pontos de Coleta	✅ Completo	GET/POST /pontos (45 cadastrados)
+
 Validações	✅ Completo	POST /validacoes (apenas 1 por usuário/denúncia)
+
 Governamental	✅ Completo	GET /governamental/dashboard, PATCH /governamental/denuncias/:id/status
+
 Mapa	✅ Completo	GET /mapa?tipo=ponto ou ?tipo=denuncia
+
 Relatórios	✅ Completo	GET /relatorios/infografico (PDF automático)
 
 📦 Instalação Rápida
 🔧 Backend Node.js
+
 git clone https://github.com/yfgdavid/RecMap-Backend.git
+
 cd RecMap-Backend
+
 npm install
 
 cp .env.example .env
