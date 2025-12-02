@@ -24,7 +24,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: "*" }));
 
-app.use("/uploads", express.static(path.resolve("uploads")));
+// Serve arquivos estáticos da pasta uploads com CORS e headers apropriados
+app.use("/uploads", express.static(path.resolve("uploads"), {
+  setHeaders: (res, filePath) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    // Headers para melhor compatibilidade de imagens
+    if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader("Content-Type", filePath.endsWith('.png') ? "image/png" : "image/jpeg");
+    }
+  }
+}));
 app.use("/denuncias", denunciaRoutes);
 app.use("/usuarios", usuarioRoutes);
 app.use("/pontos", pontoColetaRoutes);
