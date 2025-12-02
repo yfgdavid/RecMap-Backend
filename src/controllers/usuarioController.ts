@@ -41,32 +41,6 @@ export async function buscarUsuario(req: Request, res: Response) {
   }
 }
 
-export async function criarUsuario(req: Request, res: Response) {
-  try {
-    const { nome, email, senha } = req.body;
-
-    if (!nome || !email || !senha) {
-      return res.status(400).json({ error: "Campos obrigatórios faltando." });
-    }
-
-    const usuarioExistente = await prisma.usuario.findUnique({
-      where: { email },
-    });
-
-    if (usuarioExistente) {
-      return res.status(400).json({ error: "E-mail já cadastrado." });
-    }
-
-    const novoUsuario = await prisma.usuario.create({
-      data: { nome, email, senha },
-    });
-
-    res.status(201).json(novoUsuario);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao criar usuário." });
-  }
-}
 
 export async function atualizarUsuario(req: Request, res: Response) {
   try {
