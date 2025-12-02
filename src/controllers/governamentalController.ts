@@ -8,6 +8,24 @@ const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333") + "/upload
  */
 export async function getDashboardStats(req: Request, res: Response) {
   try {
+    // Verificar se o usuário é governamental
+    const id_usuario = Number(req.query.id_usuario || req.body.id_usuario);     
+
+    if (id_usuario) {
+      const usuario = await prisma.usuario.findUnique({
+        where: { id_usuario },
+        select: { tipo_usuario: true },
+      });
+
+      if (usuario && usuario.tipo_usuario !== "GOVERNAMENTAL") {
+        return res.status(403).json({
+          success: false,
+          message: "Acesso negado. Apenas usuários governamentais podem acessar este dashboard.",
+          type: "error"
+        });
+      }
+    }
+
     // Estatísticas de denúncias
     const totalDenuncias = await prisma.denuncia.count();
     const denunciasPendentes = await prisma.denuncia.count({
