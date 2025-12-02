@@ -5,20 +5,32 @@ import { getInfograficoData, generateInfograficoPDF } from
 
 // CÓDIGO DE DIAGNÓSTICO PARA SUBSTITUIR A FUNÇÃO EXISTENTE
 
-export async function gerarInfograficoPDF(req: Request, res: Response) {
+export async function gerarInfograficoPDF(req: Request, res: Response): Promise<void> {
   try {
+    // 1. Busca os dados do banco
     const data = await getInfograficoData();
+
+    // 2. Gera o PDF
     const pdfBuffer = await generateInfograficoPDF(data);
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=relatorio_recmap.pdf");
+    // 3. Configura headers da resposta
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition', 
+      'attachment; filename="relatorio_recmap.pdf"'
+    );
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    // 4. Envia o PDF
     res.send(pdfBuffer);
   } catch (error) {
-    console.error("ERRO DETALHADO NA GERAÇÃO DE PDF:", error); // Imprime no console
-    // Envia o erro detalhado na resposta HTTP para diagnóstico
-    res.status(500).json({ 
-      error: "Erro ao gerar infográfico PDF.", 
-      details: error instanceof Error ? error.message : "Erro desconhecido. Verifique o console do servidor."
+    console.error('ERRO DETALHADO NA GERAÇÃO DE PDF:', error);
+
+    // Envia resposta de erro estruturada
+    res.status(500).json({
+      error: 'Erro ao gerar infográfico PDF.',
+      details: error instanceof Error ? error.message : 'Erro desconhecido. Verifique o console do servidor.',
+      timestamp: new Date().toISOString(),
     });
   }
 }
