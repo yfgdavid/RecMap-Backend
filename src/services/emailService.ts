@@ -1,32 +1,38 @@
-// src/services/emailService.ts
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: false, // porta 587 = false
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
-
-transporter.verify((error, success) => {
-  if (error) console.log("SMTP Error:", error);
-  else console.log("Servidor SMTP pronto para enviar emails!");
-});
-
 export async function enviarEmail(to: string, subject: string, html: string) {
   try {
-    await transporter.sendMail({
-      from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
-      to,
-      subject,
-      html
+
+    console.log("🔑 BREVO_API_KEY:", process.env.BREVO_API_KEY ? `${process.env.BREVO_API_KEY.substring(0, 20)}...` : "❌ NÃO ENCONTRADA");
+    console.log("📧 FROM_EMAIL:", process.env.FROM_EMAIL);
+    
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY!,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: {
+          name: process.env.FROM_NAME || "RecMap",
+          email: process.env.FROM_EMAIL!
+        },
+        to: [{ email: to }],
+        subject: subject,
+        htmlContent: html
+      })
     });
-    console.log("Email enviado para:", to);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Brevo API Error: ${JSON.stringify(error)}`);
+    }
+
+    const result = await response.json() as { messageId?: string };
+    console.log("✅ Email enviado com sucesso para:", to, "| ID:", result.messageId || 'OK');
   } catch (error) {
-    console.error("Erro ao enviar email:", error);
+    console.error("❌ Erro ao enviar email via Brevo API:", error);
     throw new Error("Não foi possível enviar o email.");
   }
 }
+
+console.log("📧 Servidor pronto para enviar emails via Brevo");
