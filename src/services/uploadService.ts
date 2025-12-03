@@ -39,6 +39,11 @@ export async function geocode(address: string): Promise<{ latitude: number; long
 export function getFile(filename: string | null): string | null {
   if (!filename) return null;
 
-  const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333").replace(/\/$/, "");
-  return `${BASE_URL}/uploads/${filename}`;
+  // Pega a URL base do backend ou usa localhost
+  const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333").replace(/\/+$/, "");
+
+  // Remove barras extras no começo do filename
+  const cleanFilename = filename.replace(/^\/+/, "");
+
+  return `${BASE_URL}/uploads/${cleanFilename}`;
 }
