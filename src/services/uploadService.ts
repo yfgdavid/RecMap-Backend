@@ -14,7 +14,6 @@ export const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadsDir),
     filename: (req, file, cb) => {
-      // Garante que a extensão original é mantida
       const ext = path.extname(file.originalname);
       const nome = `${Date.now()}${ext}`;
       cb(null, nome);
@@ -35,15 +34,16 @@ export async function geocode(address: string): Promise<{ latitude: number; long
   };
 }
 
+// Gera URL completa da foto sem barras duplicadas
 export function getFile(filename: string | null): string | null {
   if (!filename) return null;
 
-  // Pega a URL base do backend sem barra final
+  // Pega a URL base do backend ou usa localhost
   const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333").replace(/\/+$/, "");
 
-  // Remove qualquer barra extra no começo do filename
+  // Remove barras extras no começo do filename
   const cleanFilename = filename.replace(/^\/+/, "");
 
-  // Garante que a URL não terá barras duplas
-  return `${BASE_URL}/uploads/${cleanFilename}`.replace(/([^:]\/)\/+/g, "$1");
+  // Usa join do path para criar a URL e garante que não vai ter //
+  return `${BASE_URL}/${["uploads", cleanFilename].join("/")}`;
 }
