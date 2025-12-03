@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
-
-const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333") + "/uploads/";
+import { getFile } from "../services/uploadService";
 
 /**
  * Dashboard principal com estatísticas gerais
@@ -298,7 +297,7 @@ export async function getDashboardStats(req: Request, res: Response) {
             data_criacao: d.data_criacao,
             usuario: d.usuario.nome,
             total_validacoes: d.validacoes.length,
-            foto: d.foto ? `${BASE_URL}${d.foto}` : null,
+            foto: getFile(d.foto),
           })),
           pontosColeta: pontosRecentes.map((p) => ({
             id: p.id_ponto,
@@ -307,7 +306,7 @@ export async function getDashboardStats(req: Request, res: Response) {
             localizacao: p.localizacao,
             data_criacao: p.data_criacao,
             usuario: p.usuario.nome,
-            foto: p.foto ? `${BASE_URL}${p.foto}` : null,
+            foto: getFile(p.foto),
           })),
         },
       },
@@ -381,7 +380,7 @@ export async function listarDenunciasGovernamental(req: Request, res: Response) 
               data: v.data_validacao,
             })),
           },
-          foto: d.foto ? `${BASE_URL}${d.foto}` : null,
+          foto: getFile(d.foto),
         })),
         paginacao: {
           total,
@@ -537,4 +536,3 @@ export async function getRelatorioEngajamento(req: Request, res: Response) {
     });
   }
 }
-
