@@ -37,13 +37,26 @@ export async function geocode(address: string): Promise<{ latitude: number; long
 // Gera URL completa da foto sem barras duplicadas
 export function getFile(filename: string | null): string | null {
   if (!filename) return null;
-
-  // Pega a URL base do backend ou usa localhost
-  const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333").replace(/\/+$/, "");
-
-  // Remove barras extras no começo do filename
+  
+  // 1. Pega BASE_URL e garante que não tem barra no final
+  let BASE_URL = process.env.BACKEND_URL || "http://localhost:3333";
+  BASE_URL = BASE_URL.replace(/\/+$/, ""); // Remove todas as barras do final
+  
+  // 2. Remove barras extras no começo do filename
   const cleanFilename = filename.replace(/^\/+/, "");
-
-  // Usa join do path para criar a URL e garante que não vai ter //
-  return `${BASE_URL}/${["uploads", cleanFilename].join("/")}`;
+  
+  // 3. Monta a URL
+  const fullUrl = `${BASE_URL}/uploads/${cleanFilename}`;
+  
+  // 4. GARANTIA EXTRA: Remove qualquer // que possa ter sobrado (exceto no https://)
+  const finalUrl = fullUrl.replace(/([^:]\/)\/+/g, "$1");
+  
+  // 5. LOG DE DEBUG (remova depois)
+  console.log("🔍 DEBUG getFile:");
+  console.log("  - BASE_URL:", BASE_URL);
+  console.log("  - filename original:", filename);
+  console.log("  - cleanFilename:", cleanFilename);
+  console.log("  - URL final:", finalUrl);
+  
+  return finalUrl;
 }
