@@ -1,34 +1,33 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma/client";
-import { upload, geocode } from "../services/uploadService";
-import { getFile } from "../services/uploadService";
+import { geocode, getFile } from "../services/uploadService";
 
+// Listar denúncias pendentes (exceto do usuário logado)
 export async function listarDenunciasPendentes(req: Request, res: Response) {
   try {
     const id_usuario = Number(req.params.id_usuario);
 
-    // Busca denúncias pendentes que não foram criadas pelo usuário logado
     const denuncias = await prisma.denuncia.findMany({
       where: {
         status: "PENDENTE",
         id_usuario: { not: id_usuario },
       },
       include: {
-        validacoes: true, // inclui validações existentes
+        validacoes: true,
       },
       orderBy: { data_criacao: "desc" },
     });
 
-    // Formata para frontend
-    const formatadas = denuncias.map((d) => ({
+    const formatadas = denuncias.map(d => ({
       id_denuncia: d.id_denuncia,
       titulo: d.titulo,
       descricao: d.descricao,
       status: d.status,
       data_criacao: d.data_criacao.toISOString().split("T")[0],
       localizacao: d.localizacao,
-      confirma: d.validacoes.filter((v) => v.tipo_validacao === "CONFIRMAR").length,
-      contesta: d.validacoes.filter((v) => v.tipo_validacao === "CONTESTAR").length,
+      confirma: d.validacoes.filter(v => v.tipo_validacao === "CONFIRMAR").length,
+      contesta: d.validacoes.filter(v => v.tipo_validacao === "CONTESTAR").length,
+      foto: getFile(d.foto), // URL completa
     }));
 
     res.json(formatadas);
@@ -54,7 +53,7 @@ export const criarDenuncia = async (req: Request, res: Response) => {
     });
     if (!usuarioExiste) return res.status(404).json({ error: "Usuário não encontrado." });
 
-    const foto = req.file ? req.file.filename : null;
+    const fotoUrl = req.file ? getFile(req.file.filename) : null;
 
     const novaDenuncia = await prisma.denuncia.create({
       data: {
@@ -64,7 +63,7 @@ export const criarDenuncia = async (req: Request, res: Response) => {
         localizacao,
         latitude: coords?.latitude ?? null,
         longitude: coords?.longitude ?? null,
-        foto,
+        foto: req.file ? req.file.filename : null, // mantém o filename no DB
         status: "PENDENTE",
       },
       include: {
@@ -73,15 +72,18 @@ export const criarDenuncia = async (req: Request, res: Response) => {
       },
     });
 
-    return res.status(201).json(novaDenuncia);
+    // Retorna para o frontend já com a URL completa
+    res.status(201).json({
+      ...novaDenuncia,
+      foto: fotoUrl,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Erro ao criar denúncia." });
   }
 };
 
-
-// Lista todas as denúncias
+// Listar todas as denúncias
 export async function listarDenuncias(req: Request, res: Response) {
   try {
     const denuncias = await prisma.denuncia.findMany({
@@ -98,7 +100,7 @@ export async function listarDenuncias(req: Request, res: Response) {
       localizacao: d.localizacao,
       latitude: d.latitude,
       longitude: d.longitude,
-      foto: getFile(d.foto) ,
+      foto: getFile(d.foto), // URL completa
       status: d.status,
       usuario: d.usuario.nome,
       validacoes: d.validacoes.map(v => ({
@@ -126,7 +128,6 @@ export async function atualizarDenuncia(req: Request, res: Response) {
     const denuncia = await prisma.denuncia.findUnique({ where: { id_denuncia: id } });
     if (!denuncia) return res.status(404).json({ error: "Denúncia não encontrada." });
 
-    // Se localizacao foi atualizada, geocodifica de novo
     if (dadosAtualizados.localizacao) {
       const coords = await geocode(dadosAtualizados.localizacao);
       if (coords) {
@@ -151,7 +152,7 @@ export async function atualizarDenuncia(req: Request, res: Response) {
       localizacao: atualizado.localizacao,
       latitude: atualizado.latitude,
       longitude: atualizado.longitude,
-      foto: atualizado.foto,
+      foto: getFile(atualizado.foto), // URL completa
       status: atualizado.status,
       usuario: atualizado.usuario.nome,
       validacoes: atualizado.validacoes.map(v => ({
@@ -165,7 +166,8 @@ export async function atualizarDenuncia(req: Request, res: Response) {
     res.status(500).json({ error: "Erro ao atualizar denúncia." });
   }
 }
-// Busca uma denúncia pelo ID
+
+// Buscar uma denúncia pelo ID
 export async function buscarDenuncia(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "ID inválido." });
@@ -173,39 +175,34 @@ export async function buscarDenuncia(req: Request, res: Response) {
   try {
     const denuncia = await prisma.denuncia.findUnique({
       where: { id_denuncia: id },
-      include: {
-        usuario: true,
-        validacoes: { include: { usuario: true } }
-      }
+      include: { usuario: true, validacoes: { include: { usuario: true } } },
     });
 
     if (!denuncia) return res.status(404).json({ error: "Denúncia não encontrada." });
 
-    const formatada = {
+    res.json({
       id: denuncia.id_denuncia,
       titulo: denuncia.titulo,
       descricao: denuncia.descricao,
       localizacao: denuncia.localizacao,
       latitude: denuncia.latitude,
       longitude: denuncia.longitude,
-      foto: denuncia.foto,
+      foto: getFile(denuncia.foto), // URL completa
       status: denuncia.status,
       usuario: denuncia.usuario.nome,
       validacoes: denuncia.validacoes.map(v => ({
         id: v.id_validacao,
         usuario: v.usuario.nome,
-        tipo_validacao: v.tipo_validacao
-      }))
-    };
-
-    res.json(formatada);
+        tipo_validacao: v.tipo_validacao,
+      })),
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao buscar denúncia." });
   }
 }
 
-
+// Denúncias de um usuário
 export const getDenunciasPorUsuario = async (req: Request, res: Response) => {
   try {
     const { id_usuario } = req.params;
@@ -216,14 +213,20 @@ export const getDenunciasPorUsuario = async (req: Request, res: Response) => {
       orderBy: { data_criacao: "desc" },
     });
 
-    res.json(denuncias);
+    // Retorna URL completa para cada foto
+    const formatadas = denuncias.map(d => ({
+      ...d,
+      foto: getFile(d.foto),
+    }));
+
+    res.json(formatadas);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao buscar denúncias do usuário." });
   }
 };
 
-// Deleta uma denúncia
+// Deletar denúncia
 export async function deletarDenuncia(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "ID inválido." });
@@ -238,6 +241,4 @@ export async function deletarDenuncia(req: Request, res: Response) {
     console.error(error);
     res.status(500).json({ error: "Erro ao deletar denúncia." });
   }
-
-  
 }
