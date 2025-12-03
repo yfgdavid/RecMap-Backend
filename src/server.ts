@@ -1,8 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-
-
 import usuarioRoutes from "./routes/usuario.routes";
 import denunciaRoutes from "./routes/denuncia.routes";
 import pontoColetaRoutes from "./routes/pontoColeta.routes";
@@ -13,12 +11,9 @@ import authRoutes from "./routes/auth.routes";
 import governmentalRoutes from "./routes/governamental.routes";
 import path from "path";
 
-
 dotenv.config();
 
 const app = express();
-
-
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -30,12 +25,25 @@ app.use("/uploads", express.static(path.resolve("uploads"), {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    // Headers para melhor compatibilidade de imagens
-    if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
-      res.setHeader("Content-Type", filePath.endsWith('.png') ? "image/png" : "image/jpeg");
+    
+    // Define Content-Type correto para todas as extensões
+    const ext = path.extname(filePath).toLowerCase();
+    
+    if (ext === '.png') {
+      res.setHeader("Content-Type", "image/png");
+    } else if (ext === '.jpg' || ext === '.jpeg') {
+      res.setHeader("Content-Type", "image/jpeg");
+    } else if (ext === '.gif') {
+      res.setHeader("Content-Type", "image/gif");
+    } else if (ext === '.webp') {
+      res.setHeader("Content-Type", "image/webp");
     }
+    
+    // Remove header que força download
+    res.removeHeader("Content-Disposition");
   }
 }));
+
 app.use("/denuncias", denunciaRoutes);
 app.use("/usuarios", usuarioRoutes);
 app.use("/pontos", pontoColetaRoutes);
@@ -44,7 +52,6 @@ app.use("/validacoes", validacaoRoutes);
 app.use("/mapa", mapaRoutes);
 app.use("/auth", authRoutes);
 app.use("/governamental", governmentalRoutes);
-
 
 app.get("/", (req, res) => {
   res.json({
