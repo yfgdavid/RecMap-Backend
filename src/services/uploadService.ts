@@ -14,11 +14,23 @@ export const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadsDir),
     filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname);
+      const ext = path.extname(file.originalname).toLowerCase();
       const nome = `${Date.now()}${ext}`;
       cb(null, nome);
     },
   }),
+  fileFilter: (req, file, cb) => {
+    // Aceita apenas imagens
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas!'));
+    }
+  },
 });
 
 // Função para transformar endereço em latitude/longitude usando Nominatim (OpenStreetMap)
