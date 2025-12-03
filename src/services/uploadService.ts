@@ -35,15 +35,15 @@ export async function geocode(address: string): Promise<{ latitude: number; long
   };
 }
 
-// Gera URL completa da foto
 export function getFile(filename: string | null): string | null {
   if (!filename) return null;
 
-  // Pega a URL base do backend ou usa localhost
+  // Pega a URL base do backend sem barra final
   const BASE_URL = (process.env.BACKEND_URL || "http://localhost:3333").replace(/\/+$/, "");
 
-  // Remove barras extras no começo do filename
+  // Remove qualquer barra extra no começo do filename
   const cleanFilename = filename.replace(/^\/+/, "");
 
-  return `${BASE_URL}/uploads/${cleanFilename}`;
+  // Garante que a URL não terá barras duplas
+  return `${BASE_URL}/uploads/${cleanFilename}`.replace(/([^:]\/)\/+/g, "$1");
 }
